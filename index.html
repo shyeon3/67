@@ -340,6 +340,10 @@ body{overflow:hidden;overscroll-behavior:none}
 .mm-floors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .mm-floors button{border:0;border-radius:14px;padding:18px 0;font-size:18px;font-weight:800;color:#fff;cursor:pointer}
 .mm-card .ghost{align-self:center}
+.mm-places{display:flex;flex-direction:column;gap:8px}
+.mm-places button{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:14px;padding:15px 16px;font:inherit;font-size:17px;font-weight:700;text-align:left;cursor:pointer}
+.mm-places button small{color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap}
+.mm-places .mm-back{background:none;border:0;justify-content:center;color:var(--muted);font-size:14px;padding:6px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 120px);z-index:70;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 
 .navui .nv-ctrl{grid-template-columns:1fr 1.6fr}
@@ -384,6 +388,7 @@ img{max-width:100%}
     <b id="fa-title">지금 몇 층이에요?</b>
     <p class="note" id="fa-sub"></p>
     <div class="mm-floors" id="fa-floors"></div>
+    <div class="mm-places" id="fa-places" hidden></div>
     <button class="ghost" id="fa-cancel" type="button">나중에</button>
   </div>
 </div>
@@ -618,7 +623,7 @@ const tApply=(T,z)=>cadd(cmul(T.a,z),T.b);
 let CAL={v:1,pts:[]};
 try{const s=localStorage.getItem('jm-geo-cal');if(s){const c=JSON.parse(s);if(c&&Array.isArray(c.pts))CAL=c;}}catch(e){}
 if(!CAL.pts.length&&BAKED_CAL)CAL=JSON.parse(JSON.stringify(BAKED_CAL));
-const GEO={T:{},ready:{},info:{}};
+const GEO={T:{},ready:{},est:{},info:{}};
 function fitSim(prs){
   const n=prs.length;let zm=[0,0],wm=[0,0];
   prs.forEach(p=>{zm=cadd(zm,p.z);wm=cadd(wm,p.w);});zm=[zm[0]/n,zm[1]/n];wm=[wm[0]/n,wm[1]/n];
@@ -645,18 +650,19 @@ function computeGeo(){
   GEO.T=T;
   ['M','C'].forEach(b=>{
     const n=by[b].length,res=by[b].map(p=>{const q=pr(p),d=csub(tApply(T[b],q.z),q.w);return Math.hypot(d[0],d[1]);});
-    GEO.ready[b]=n>=1;
-    GEO.info[b]={full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*M_PER_UNIT),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0,deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
+    const est=n===0&&by[b==='M'?'C':'M'].length>=1; // 이 건물은 안 맞췄지만 다른 건물 보정 + 연결통로로 위치 추정
+    GEO.ready[b]=n>=1||est;GEO.est[b]=est;
+    GEO.info[b]={est,full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*M_PER_UNIT),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0,deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
   });
 }
 computeGeo();
 const scaleOf=b=>Math.hypot(...GEO.T[b].a);
 function ll2map(b,lat,lng){const z=cdiv(csub(ll2w(lat,lng),GEO.T[b].b),GEO.T[b].a);return [z[0],-z[1]];}
-function nearestPlace(k,x,y){
-  let best=null;
-  places.forEach(p=>{if(p.k!==k||p.t==='d')return;const r=p.r,d=Math.hypot(Math.max(r[0]-x,0,x-r[2]),Math.max(r[1]-y,0,y-r[3]))+Math.hypot(p.cx-x,p.cy-y)*0.01;if(!best||d<best.d)best={p,d};});
-  return best&&best.p;
+function nearestPlaces(k,x,y,n){
+  return places.filter(p=>p.k===k&&p.t!=='d').map(p=>{const r=p.r,g=Math.hypot(Math.max(r[0]-x,0,x-r[2]),Math.max(r[1]-y,0,y-r[3]));return {p,g,d:g+Math.hypot(p.cx-x,p.cy-y)*0.01};})
+    .sort((a,b)=>a.d-b.d).slice(0,n);
 }
+function nearestPlace(k,x,y){const b=nearestPlaces(k,x,y,1)[0];return b&&b.p;}
 function saveCal(){try{localStorage.setItem('jm-geo-cal',JSON.stringify(CAL));}catch(e){}computeGeo();}
 
 /* GPS 수신 */
@@ -842,7 +848,7 @@ function updateSheetH(){document.documentElement.style.setProperty('--sheet-h',$
 function renderSheet(){
   const sh=$('msheet');
   if(mode==='preview'&&route){
-    const R=route,B=R.B,ready=GEO.ready[R.A.b]||GEO.ready[B.b];
+    const R=route,B=R.B,ready=[R.A.b,B.b].some(b=>GEO.ready[b]&&!GEO.est[b]);
     sh.innerHTML=`<div class="ms-in"><div class="grab"></div>
       <div class="pv-top"><div class="t"><small>도착${toId===NEAR_WC?' · 가장 가까운 화장실':''}</small><b>${B.n}</b><span class="pv-k">${badge(B.k)}${BLD[B.b].name}</span></div><button class="mbtn sm" id="pv-close" type="button" aria-label="경로 닫기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <div class="summary"><span class="big">약 ${fmtTime(R.secs)}</span><span class="meta">${Math.round(R.total)}m 정도</span></div>
@@ -908,27 +914,36 @@ function onIdleFix(f,e){
   myB=det.b;myXY=[det.x,det.y];gpsState='ok';
   if(changed){myFloor=null;askFloor();}
   else if(first&&fromKind!=='qr'&&!myFloor)askFloor();
-  if(updateFromGps()&&mode==='preview')refreshRoute(false);
   if(first||changed){if(mode==='idle')renderSheet();renderFloorSel();}
   else if(mode==='idle'&&fromKind==='gps'){const s=$('me-sub');if(s)s.textContent=meSub();}
   updateMeDot();if(follow)centerOnMe(true);
 }
-function updateFromGps(){
-  if(fromKind!=='gps'||!myB||!myFloor||!myXY)return false;
-  const p=nearestPlace(myB+myFloor,myXY[0],myXY[1]);
-  if(p&&p.id!==fromId){fromId=p.id;return true;}return false;
-}
 function askFloor(){
   if(asking||!myB)return;asking=true;
   $('fa-title').textContent=`${BLD[myB].name}에 있어요. 지금 몇 층이에요?`;
-  $('fa-sub').textContent='GPS는 높이를 몰라서 층만 직접 골라 주세요.';
+  $('fa-sub').textContent=GEO.est[myB]?'이 건물은 아직 GPS를 맞추기 전이라 위치가 대략적이에요. 층을 골라 주세요.':'GPS는 높이를 몰라서 층만 직접 골라 주세요.';
   $('fa-floors').innerHTML=[1,2,3,4].map(f=>`<button type="button" class="f${f}" data-f="${f}">${f}층</button>`).join('');
-  $('fa-floors').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{asking=false;$('floorask').hidden=true;setMyFloor(+b.dataset.f);});
+  $('fa-floors').hidden=false;$('fa-places').hidden=true;
+  $('fa-floors').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>askPlace(+b.dataset.f));
   $('floorask').hidden=false;
 }
+/* 층을 고르면 GPS 근처 장소 3개 중에서 지금 있는 곳을 골라 확정 */
+function askPlace(f){
+  if(!myXY){asking=false;$('floorask').hidden=true;toast('GPS로 위치를 다시 찾는 중이에요');return;}
+  myFloor=f;viewK=myB+f;follow=true;renderStage();requestAnimationFrame(()=>{if(!centerOnMe(false))centerDefault();});
+  const k=myB+f,[x,y]=myXY,sc=scaleOf(myB),cand=nearestPlaces(k,x,y,3);
+  $('fa-title').textContent=`${kname(k)} · 지금 어디 근처예요?`;
+  $('fa-sub').textContent='GPS로 찾은 곳에서 가까운 장소예요. 지금 있는 곳을 골라 주세요.';
+  $('fa-floors').hidden=true;
+  const pl=$('fa-places');
+  pl.innerHTML=cand.map(c=>{const m=Math.round(c.g*sc);return `<button type="button" data-p="${c.p.id}"><span>${c.p.n}</span><small>${m<3?'바로 여기':`약 ${m}m`}</small></button>`;}).join('')+'<button type="button" class="mm-back" data-back="1">층 다시 고르기</button>';
+  pl.hidden=false;
+  pl.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{asking=false;$('floorask').hidden=true;setMyFloor(f,b.dataset.p);});
+  pl.querySelector('[data-back]').onclick=()=>{asking=false;askFloor();};
+}
 $('fa-cancel').onclick=()=>{asking=false;$('floorask').hidden=true;};
-function setMyFloor(f){
-  myFloor=f;fromKind='gps';updateFromGps();viewK=myB+f;follow=true;
+function setMyFloor(f,id){
+  myFloor=f;fromKind='gps';fromId=id;viewK=myB+f;follow=true;
   if(toId)refreshRoute(false);else renderAll(false);
   requestAnimationFrame(()=>{if(!centerOnMe(false))centerDefault();});
 }
@@ -1183,7 +1198,7 @@ function onNavFix(f,e){
   if(e){if(e.code===0||e.code===1)NAV.gpsDenied=true;return;}
   if(NAV.arrived||!NAV.playing||f.acc>12)return;
   const {L}=legAt(NAV.target);if(L.type!=='walk')return;
-  const b=L.k[0];if(!GEO.ready[b])return;
+  const b=L.k[0];if(!GEO.ready[b]||GEO.est[b])return;
   const [x,y]=ll2map(b,f.lat,f.lng),sc=scaleOf(b);
   let best=null;
   for(let j=1;j<L.pts.length;j++){const a=L.pts[j-1],q=proj([x,y],[a,L.pts[j]]),dp=dist(q,[x,y])*sc;

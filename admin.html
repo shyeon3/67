@@ -499,7 +499,7 @@ const tApply=(T,z)=>cadd(cmul(T.a,z),T.b);
 let CAL={v:1,pts:[]};
 try{const s=localStorage.getItem('jm-geo-cal');if(s){const c=JSON.parse(s);if(c&&Array.isArray(c.pts))CAL=c;}}catch(e){}
 if(!CAL.pts.length&&BAKED_CAL)CAL=JSON.parse(JSON.stringify(BAKED_CAL));
-const GEO={T:{},ready:{},info:{}};
+const GEO={T:{},ready:{},est:{},info:{}};
 function fitSim(prs){
   const n=prs.length;let zm=[0,0],wm=[0,0];
   prs.forEach(p=>{zm=cadd(zm,p.z);wm=cadd(wm,p.w);});zm=[zm[0]/n,zm[1]/n];wm=[wm[0]/n,wm[1]/n];
@@ -526,18 +526,19 @@ function computeGeo(){
   GEO.T=T;
   ['M','C'].forEach(b=>{
     const n=by[b].length,res=by[b].map(p=>{const q=pr(p),d=csub(tApply(T[b],q.z),q.w);return Math.hypot(d[0],d[1]);});
-    GEO.ready[b]=n>=1;
-    GEO.info[b]={full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*M_PER_UNIT),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0,deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
+    const est=n===0&&by[b==='M'?'C':'M'].length>=1; // 이 건물은 안 맞췄지만 다른 건물 보정 + 연결통로로 위치 추정
+    GEO.ready[b]=n>=1||est;GEO.est[b]=est;
+    GEO.info[b]={est,full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*M_PER_UNIT),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0,deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
   });
 }
 computeGeo();
 const scaleOf=b=>Math.hypot(...GEO.T[b].a);
 function ll2map(b,lat,lng){const z=cdiv(csub(ll2w(lat,lng),GEO.T[b].b),GEO.T[b].a);return [z[0],-z[1]];}
-function nearestPlace(k,x,y){
-  let best=null;
-  places.forEach(p=>{if(p.k!==k||p.t==='d')return;const r=p.r,d=Math.hypot(Math.max(r[0]-x,0,x-r[2]),Math.max(r[1]-y,0,y-r[3]))+Math.hypot(p.cx-x,p.cy-y)*0.01;if(!best||d<best.d)best={p,d};});
-  return best&&best.p;
+function nearestPlaces(k,x,y,n){
+  return places.filter(p=>p.k===k&&p.t!=='d').map(p=>{const r=p.r,g=Math.hypot(Math.max(r[0]-x,0,x-r[2]),Math.max(r[1]-y,0,y-r[3]));return {p,g,d:g+Math.hypot(p.cx-x,p.cy-y)*0.01};})
+    .sort((a,b)=>a.d-b.d).slice(0,n);
 }
+function nearestPlace(k,x,y){const b=nearestPlaces(k,x,y,1)[0];return b&&b.p;}
 function saveCal(){try{localStorage.setItem('jm-geo-cal',JSON.stringify(CAL));}catch(e){}computeGeo();}
 
 /* GPS 수신 */
@@ -632,7 +633,7 @@ function mapBlock(k,o,note,focusX){
 /* GPS 위치 맞추기 화면 */
 let calB='M',calTarget=null,calUnsub=null,calBusy=false,resetArm=0;
 function calBadges(){
-  $('cal-badges').innerHTML=['M','C'].map(b=>{const i=GEO.info[b];const t=i.full?`${i.n}곳 완료`:i.n>=1?`${i.n}곳 · 방향 추정`:'맞춤 전';return `<span class="cal-badge${i.full?' ok':i.n>=1?' half':''}">${BLD[b].name} ${t}</span>`;}).join('');
+  $('cal-badges').innerHTML=['M','C'].map(b=>{const i=GEO.info[b];const t=i.full?`${i.n}곳 완료`:i.n>=1?`${i.n}곳 · 방향 추정`:i.est?'맞춤 전 · 연결통로로 추정':'맞춤 전';return `<span class="cal-badge${i.full?' ok':i.n>=1?' half':''}">${BLD[b].name} ${t}</span>`;}).join('');
 }
 function renderCal(){
   $('cal-b').innerHTML='';
