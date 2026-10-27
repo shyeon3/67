@@ -287,6 +287,16 @@ body{overflow:hidden;overscroll-behavior:none}
 .mzoom button{width:44px;height:42px;border:0;background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer}
 .mzoom button+button{border-top:1px solid var(--line)}
 .mzoom button:disabled{color:var(--muted);opacity:.5}
+.mmodal{position:fixed;inset:0;z-index:50;background:rgba(10,16,24,.45);display:flex;align-items:flex-end;justify-content:center}
+.mm-card{width:100%;max-width:560px;background:var(--surface);border-radius:22px 22px 0 0;padding-top:22px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.mm-card b{font-size:19px;font-weight:800;text-wrap:balance}
+.mm-floors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mm-floors button{border:0;border-radius:14px;padding:18px 0;font-size:18px;font-weight:800;color:#fff;cursor:pointer}
+.mm-card .ghost{align-self:center}
+.mm-places{display:flex;flex-direction:column;gap:8px}
+.mm-places button{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:14px;padding:15px 16px;font:inherit;font-size:17px;font-weight:700;text-align:left;cursor:pointer}
+.mm-places button small{color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap}
+.mm-places .mm-back{background:none;border:0;justify-content:center;color:var(--muted);font-size:14px;padding:6px}
 
 .msheet{position:fixed;left:0;right:0;bottom:0;z-index:20;max-height:62vh;overflow:auto;background:var(--surface);border-radius:22px 22px 0 0;box-shadow:0 -6px 24px rgba(17,26,43,.16);padding-bottom:env(safe-area-inset-bottom,0px);overscroll-behavior:contain}
 .ms-in{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px 16px;display:flex;flex-direction:column;gap:12px}
@@ -324,7 +334,7 @@ body{overflow:hidden;overscroll-behavior:none}
 .mp-head b{font-size:17px;font-weight:800}
 .mp-body{flex:1;overflow:auto;padding-top:16px;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
 .mp-body>*{width:100%;max-width:560px;margin-left:auto;margin-right:auto}
-.res-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.res-list{flex:none;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
 .res-list button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink);font-size:15px}
 .res-list li:last-child button{border-bottom:0}
 .res-list button:hover{background:var(--soft)}
@@ -375,6 +385,16 @@ img{max-width:100%}
 </section>
 
 
+
+<div class="mmodal" id="floorask" hidden>
+  <div class="mm-card" role="dialog" aria-labelledby="fa-title">
+    <b id="fa-title">지금 몇 층이에요?</b>
+    <p class="note" id="fa-sub"></p>
+    <div class="mm-floors" id="fa-floors"></div>
+    <div class="mm-places" id="fa-places" hidden></div>
+    <button class="ghost" id="fa-cancel" type="button">나중에</button>
+  </div>
+</div>
 
 <section class="navui" id="navui" hidden aria-label="실시간 길안내">
   <div class="nv-top">
@@ -594,7 +614,53 @@ function search(q){
   return scored.sort((a,b)=>b[0]-a[0]).slice(0,12).map(x=>x[1]);
 }
 
-/* ---------- 가까운 장소 ---------- */
+/* ---------- GPS 좌표 → 도면 좌표 (처음에 근처 장소 묻는 데만 씀) ---------- */
+const GEO_ORIGIN={lat:34.9532107,lng:127.6976274}; // 구글 지도 기준 중마고 위치
+const MLAT=111320,MLNG=111320*Math.cos(GEO_ORIGIN.lat*Math.PI/180);
+const BAKED_CAL={"v":1,"pts":[{"b":"M","x":286.1,"y":219.9,"lat":34.9531767,"lng":127.6975847,"acc":12},{"b":"M","x":282.9,"y":221,"lat":34.9531784,"lng":127.6975908,"acc":5},{"b":"M","x":280.8,"y":223.1,"lat":34.9531793,"lng":127.6975957,"acc":4},{"b":"M","x":-44.6,"y":131.8,"lat":34.9532132,"lng":127.6971006,"acc":7},{"b":"M","x":-44.6,"y":130.3,"lat":34.9532003,"lng":127.697087,"acc":6},{"b":"M","x":-43.6,"y":128.2,"lat":34.9531977,"lng":127.6970865,"acc":5},{"b":"M","x":298.8,"y":78.8,"lat":34.953349,"lng":127.6976116,"acc":10},{"b":"M","x":297.8,"y":79.1,"lat":34.9533507,"lng":127.6975691,"acc":9},{"b":"M","x":303.1,"y":78.4,"lat":34.9533736,"lng":127.6975428,"acc":6},{"b":"C","x":229,"y":137.7,"lat":34.9536705,"lng":127.6979247,"acc":6},{"b":"C","x":236.6,"y":138.9,"lat":34.9536658,"lng":127.6979147,"acc":4},{"b":"C","x":-0.3,"y":43.6,"lat":34.9537541,"lng":127.6976651,"acc":4},{"b":"C","x":-0.3,"y":41,"lat":34.95376,"lng":127.6976625,"acc":4},{"b":"C","x":407.3,"y":43.2,"lat":34.9537835,"lng":127.6981718,"acc":5},{"b":"C","x":402.2,"y":44.8,"lat":34.9537847,"lng":127.6981794,"acc":4}]}; // 2026-10-27 바깥 현관 앞에서 맞춘 값: 본관 중앙·서쪽·북쪽 현관, 청솔관 중앙현관·왼쪽 끝·오른쪽 끝 // 현장에서 맞춘 보정값을 여기에 넣으면 모든 사람에게 적용돼요
+const BBOX={M:[-100,-26,610,235],C:[0,0,400,135]};
+const BRIDGE_Z={M:[527,-20],C:[250,-140]};
+const cadd=(a,b)=>[a[0]+b[0],a[1]+b[1]],csub=(a,b)=>[a[0]-b[0],a[1]-b[1]];
+const cmul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];
+const cdiv=(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return [(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];};
+const ll2w=(lat,lng)=>[(lng-GEO_ORIGIN.lng)*MLNG,(lat-GEO_ORIGIN.lat)*MLAT];
+const tApply=(T,z)=>cadd(cmul(T.a,z),T.b);
+const CAL=BAKED_CAL;
+const GEO={T:{},ready:{},est:{},info:{}};
+function fitSim(prs){
+  const n=prs.length;let zm=[0,0],wm=[0,0];
+  prs.forEach(p=>{zm=cadd(zm,p.z);wm=cadd(wm,p.w);});zm=[zm[0]/n,zm[1]/n];wm=[wm[0]/n,wm[1]/n];
+  let num=[0,0],den=0;
+  prs.forEach(p=>{const dz=csub(p.z,zm),dw=csub(p.w,wm);num=cadd(num,cmul(dw,[dz[0],-dz[1]]));den+=dz[0]*dz[0]+dz[1]*dz[1];});
+  if(den<1e-9)return null;
+  const a=[num[0]/den,num[1]/den];return {a,b:csub(wm,cmul(a,zm))};
+}
+function computeGeo(){
+  const s0=UNIT_M,by={M:[],C:[]};
+  CAL.pts.forEach(p=>{if(by[p.b])by[p.b].push(p);});
+  const pr=p=>({z:[p.x,-p.y],w:ll2w(p.lat,p.lng)});
+  const fit={},T={};
+  const spread=b=>{let m=0;by[b].forEach(p=>by[b].forEach(q=>{m=Math.max(m,Math.hypot(p.x-q.x,p.y-q.y));}));return m;};
+  ['M','C'].forEach(b=>{if(by[b].length>=2&&spread(b)*s0[b]>=20)fit[b]=fitSim(by[b].map(pr));});
+  ['M','C'].forEach(b=>{
+    if(fit[b]){T[b]=fit[b];return;}
+    const o=b==='M'?'C':'M',a=fit[o]?cmul(fit[o].a,[s0[b]/s0[o],0]):[s0[b],0];
+    if(by[b].length>=1){const qs=by[b].map(pr),n=qs.length,zm=qs.reduce((s,q)=>cadd(s,q.z),[0,0]),wm=qs.reduce((s,q)=>cadd(s,q.w),[0,0]);T[b]={a,b:csub([wm[0]/n,wm[1]/n],cmul(a,[zm[0]/n,zm[1]/n]))};}
+  });
+  if(!T.M&&!T.C)T.M={a:[s0.M,0],b:csub([0,0],cmul([s0.M,0],[260,-105]))};
+  if(!T.C){const a=cmul(T.M.a,[s0.C/s0.M,0]),wp=cadd(tApply(T.M,BRIDGE_Z.M),cmul(T.M.a,[0,110]));T.C={a,b:csub(wp,cmul(a,BRIDGE_Z.C))};}
+  if(!T.M){const a=cmul(T.C.a,[s0.M/s0.C,0]),wp=csub(tApply(T.C,BRIDGE_Z.C),cmul(a,[0,110]));T.M={a,b:csub(wp,cmul(a,BRIDGE_Z.M))};}
+  GEO.T=T;
+  ['M','C'].forEach(b=>{
+    const n=by[b].length,res=by[b].map(p=>{const q=pr(p),d=csub(tApply(T[b],q.z),q.w);return Math.hypot(d[0],d[1]);});
+    const est=n===0&&by[b==='M'?'C':'M'].length>=1; // 이 건물은 안 맞췄지만 다른 건물 보정 + 연결통로로 위치 추정
+    GEO.ready[b]=n>=1||est;GEO.est[b]=est;
+    GEO.info[b]={est,full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*s0[b]),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0[b],deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
+  });
+}
+computeGeo();
+const scaleOf=b=>Math.hypot(...GEO.T[b].a);
+function ll2map(b,lat,lng){const z=cdiv(csub(ll2w(lat,lng),GEO.T[b].b),GEO.T[b].a);return [z[0],-z[1]];}
 function nearestPlaces(k,x,y,n){
   return places.filter(p=>p.k===k&&p.t!=='d').map(p=>{const r=p.r,g=Math.hypot(Math.max(r[0]-x,0,x-r[2]),Math.max(r[1]-y,0,y-r[3]));return {p,g,d:g+Math.hypot(p.cx-x,p.cy-y)*0.01};})
     .sort((a,b)=>a.d-b.d).slice(0,n);
@@ -606,7 +672,7 @@ const $=id=>document.getElementById(id);
 const NEAR_WC='near-wc';
 const TORDER={s:0,g:1,h:2,o:3,c:4,l:5,w:6,e:7};
 let fromId=null,toId=null,lastRoute=null,route=null,mode='idle',viewK='M1';
-let fromKind='default',myB=null,myFloor=null,spMode='to',spB='M';
+let fromKind='default',myB=null,myFloor=null,spMode='to',spB='M',nearBusy=false;
 function fillSelect(sel){
   for(const k of KEYS){
     const g=document.createElement('optgroup');g.label=kname(k);
@@ -766,10 +832,11 @@ function renderSheet(){
   }else{
     const A=fromId&&byId[fromId];
     let title,sub,ic='me-ic';
-    if(A){title=lab(A);sub=fromKind==='qr'?'QR로 찍은 위치에서 출발':fromKind==='manual'?'직접 고른 출발지':'기본 출발지 · 바꾸기로 고를 수 있어요';ic='me-ic pin';}
+    if(A){title=lab(A);sub=fromKind==='qr'?'QR로 찍은 위치에서 출발':fromKind==='manual'?'직접 고른 출발지':fromKind==='near'?'GPS로 찾은 근처에서 고른 출발지':'기본 출발지 · 바꾸기로 고를 수 있어요';ic='me-ic pin';}
     else{title='출발지를 정해 주세요';sub='';}
     sh.innerHTML=`<div class="ms-in"><div class="grab"></div>
       <div class="me-row"><span class="${ic}"></span><div class="me-t"><small>출발</small><b>${title}</b><span id="me-sub">${sub}</span></div><button class="ghost sm" id="me-change" type="button">바꾸기</button></div>
+      ${nearBusy?'<p class="m-note"><span class="spin"></span>GPS로 근처 장소를 찾는 중이에요</p>':''}
       <div class="chips" id="chips"></div>
       <button class="m-link" id="m-dir" type="button">층별 장소 전체 보기</button></div>`;
     CHIPS.forEach(([label,key])=>{
@@ -786,6 +853,55 @@ function renderAll(recenter){renderStage();renderSheet();if(recenter)requestAnim
 try{new ResizeObserver(updateSheetH).observe($('msheet'));}catch(e){}
 window.addEventListener('resize',updateSheetH);
 
+/* ---------- 근처 장소 묻기: 처음 열 때 GPS로 한 번만 위치를 잡고, 근처 장소 중에서 출발지를 고르게 함 ---------- */
+const gpsPossible=()=>!!(navigator.geolocation&&window.isSecureContext);
+function gpsErrMsg(e){
+  if(e&&e.code===1)return '위치 권한이 꺼져 있어요. 바꾸기로 출발지를 골라 주세요.';
+  return 'GPS로 위치를 못 찾았어요. 바꾸기로 출발지를 골라 주세요.';
+}
+function detectBuilding(f){
+  let best=null;
+  ['M','C'].forEach(b=>{if(!GEO.ready[b])return;const [x,y]=ll2map(b,f.lat,f.lng),bb=BBOX[b];
+    const dm=Math.hypot(Math.max(bb[0]-x,0,x-bb[2]),Math.max(bb[1]-y,0,y-bb[3]))*scaleOf(b);if(!best||dm<best.dm)best={b,x,y,dm};});
+  return best&&best.dm<=Math.max(40,f.acc)?best:null;
+}
+let nearAt=null;
+function askNearby(quiet){
+  if(!gpsPossible()||nearBusy){if(!quiet)toast('이 화면에서는 GPS를 쓸 수 없어요');return;}
+  nearBusy=true;if(mode==='idle')renderSheet();
+  const done=msg=>{nearBusy=false;if(mode==='idle')renderSheet();if(msg&&!quiet)toast(msg);};
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const f={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy},det=detectBuilding(f);
+    if(!det){done(`학교 건물 근처가 아니거나 GPS가 부정확해요 (±${Math.round(f.acc)}m)`);return;}
+    nearAt=det;done();askFloor();
+  },e=>done(gpsErrMsg(e)),{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
+}
+function askFloor(){
+  const b=nearAt.b;
+  $('fa-title').textContent=`${BLD[b].name}에 있어요. 지금 몇 층이에요?`;
+  $('fa-sub').textContent='GPS는 높이를 몰라서 층만 직접 골라 주세요.';
+  $('fa-floors').innerHTML=[1,2,3,4].map(f=>`<button type="button" class="f${f}" data-f="${f}">${f}층</button>`).join('');
+  $('fa-floors').hidden=false;$('fa-places').hidden=true;
+  $('fa-floors').querySelectorAll('[data-f]').forEach(bt=>bt.onclick=()=>askPlace(+bt.dataset.f));
+  $('floorask').hidden=false;
+}
+/* 층을 고르면 GPS로 찾은 곳에서 가까운 장소 3개 중에서 지금 있는 곳을 고름 */
+function askPlace(f){
+  const {b,x,y}=nearAt,k=b+f,sc=scaleOf(b),cand=nearestPlaces(k,x,y,3);
+  viewK=k;renderStage();requestAnimationFrame(()=>centerOn(x,y));
+  $('fa-title').textContent=`${kname(k)} · 지금 어디 근처예요?`;
+  $('fa-sub').textContent='GPS로 찾은 곳에서 가까운 장소예요. 지금 있는 곳을 골라 주세요.';
+  $('fa-floors').hidden=true;
+  const pl=$('fa-places');
+  pl.innerHTML=cand.map(c=>{const m=Math.round(c.g*sc);return `<button type="button" data-p="${c.p.id}"><span>${c.p.n}</span><small>${m<3?'바로 여기':`약 ${m}m`}</small></button>`;}).join('')+'<button type="button" class="mm-back" data-back="1">층 다시 고르기</button>';
+  pl.hidden=false;
+  pl.querySelectorAll('[data-p]').forEach(bt=>bt.onclick=()=>{$('floorask').hidden=true;
+    fromId=bt.dataset.p;fromKind='near';myB=b;myFloor=f;viewK=k;
+    if(toId)refreshRoute(true);else renderAll(true);});
+  pl.querySelector('[data-back]').onclick=askFloor;
+}
+$('fa-cancel').onclick=()=>{$('floorask').hidden=true;centerDefault();};
+
 /* ---------- 검색 화면 ---------- */
 function openSearch(m){spMode=m;spB=viewK[0];$('spanel').hidden=false;$('sp-input').value='';$('sp-input').placeholder=m==='to'?'어디로 갈까요?':'어디서 출발해요?';renderSP();setTimeout(()=>{try{$('sp-input').focus();}catch(e){}},60);}
 function closeSearch(){$('spanel').hidden=true;}
@@ -793,6 +909,10 @@ function renderSP(){
   const q=$('sp-input').value,body=$('sp-body');body.innerHTML='';
   const pick=id=>{closeSearch();if(spMode==='to')pickDest(id);else pickFrom(id);};
   const add=h=>{const d=document.createElement('div');d.innerHTML=h.trim();const el=d.firstElementChild;body.appendChild(el);return el;};
+  if(spMode==='from'&&gpsPossible()){
+    const g=add('<ul class="res-list"><li><button type="button"><span class="fb fx">GPS</span><span>근처 장소에서 고르기</span><span class="sub">GPS로 한 번만 찾아요</span></button></li></ul>');
+    g.querySelector('button').onclick=()=>{closeSearch();askNearby(false);};
+  }
   if(!q.trim()){
     add('<p class="sp-sec">층으로 찾기</p>');
     ['M','C'].forEach(b=>{const el=add(`<div class="sp-fl"><span>${BLD[b].name}</span><div class="floorgrid">${[1,2,3,4].map(f=>`<button type="button" class="f${f}" data-q="${BLD[b].name} ${f}층 ">${f}층</button>`).join('')}</div></div>`);
@@ -1173,6 +1293,7 @@ $('nv-voice').onclick=()=>{NAV.voice=!NAV.voice;$('nv-voice').setAttribute('aria
   if(byId[hashId]){const p=byId[hashId];fromId=p.id;fromKind='qr';myB=p.b;myFloor=p.f;viewK=p.k;}
   else{fromId=central.id;fromKind='default';viewK=central.k;}
   renderAll(false);requestAnimationFrame(()=>requestAnimationFrame(centerDefault));
+  if(fromKind!=='qr')askNearby(true);
 })();
 </script>
 
