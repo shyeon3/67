@@ -220,7 +220,6 @@ ol.steps li:last-child::before{display:none}
 .nv-sub{font-size:14px;color:var(--on-navy-dim);margin-top:3px}
 .nv-x{width:40px;height:40px;border-radius:12px;border:0;background:var(--navy-2);color:var(--on-navy);display:grid;place-items:center;flex:none;cursor:pointer;align-self:flex-start}
 .nv-x[aria-pressed="true"]{background:var(--accent)}
-.nv-nexttxt{font-size:13px;color:var(--on-navy-dim);padding-block:0 12px}
 .nv-mapwrap{flex:1;position:relative;min-height:0;margin-top:-20px}
 .nv-map{position:absolute;inset:0;overflow:auto;touch-action:pan-x pan-y;scrollbar-width:none;background:var(--surface);padding-top:20px}
 .nv-map::-webkit-scrollbar{display:none}
@@ -241,12 +240,9 @@ ol.steps li:last-child::before{display:none}
 .nv-arrive{display:flex;align-items:center;gap:14px}
 .nv-arrive b{display:block;font-size:20px;font-weight:800}
 .nv-arrive span{color:var(--muted)}
-.path-done{fill:none;stroke:var(--muted);stroke-opacity:.6;stroke-width:5.5;stroke-linecap:round;stroke-linejoin:round}
 .me-halo{fill:var(--accent);fill-opacity:.22;transform-box:fill-box;transform-origin:center;animation:halo 1.8s ease-out infinite}
 @keyframes halo{from{transform:scale(.5);opacity:1}to{transform:scale(1.5);opacity:0}}
 .me-dot{fill:var(--accent);stroke:#fff;stroke-width:3}
-.me-dir{fill:var(--accent);stroke:#fff;stroke-width:1.5}
-#nv-me.wait .me-halo{fill:var(--sign);fill-opacity:.5}
 @media (prefers-reduced-motion:reduce){.me-halo{animation:none}}
 
 /* bottom nav */
@@ -353,14 +349,12 @@ body{overflow:hidden;overscroll-behavior:none}
 .navui .nv-ctrl{grid-template-columns:1fr 1.6fr}
 
 /* 실내 내비 (걸음·방향) */
-:root{--done:#b4bdc9}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--done:#4b5666}}
-:root[data-theme="dark"]{--done:#4b5666}
-.navui .path-done{stroke:var(--done);stroke-opacity:1;stroke-width:6.5}
 .nv-map{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.nv-nexttxt:empty{display:none}
-.nv-top:has(.nv-nexttxt:empty) .nv-row{padding-bottom:14px}
 .nv-hint{margin:0;font-size:12px;color:var(--muted);text-align:center}
+.navui .nv-row{padding-bottom:14px}
+.navui .nv-d{font-size:24px;overflow-wrap:anywhere}
+.nv-next{display:flex;flex-direction:column;gap:8px}
+.nv-next p{margin:0;font-weight:700}
 button.nv-chip{font:inherit;font-size:12px}
 html,body{margin:0}
 .top .gut{padding-top:calc(18px + env(safe-area-inset-top,0px))}
@@ -398,28 +392,26 @@ img{max-width:100%}
   </div>
 </div>
 
-<section class="navui" id="navui" hidden aria-label="실시간 길안내">
+<section class="navui" id="navui" hidden aria-label="길 따라가기">
   <div class="nv-top">
     <div class="nv-in nv-row">
-      <div class="nv-ico" id="nv-ico"></div>
-      <div class="nv-txt"><div class="nv-main" id="nv-main"></div><div class="nv-sub" id="nv-sub"></div></div>
-      <button class="nv-x" id="nv-voice" type="button" aria-label="음성 안내" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+      <div class="nv-ico dest"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+      <div class="nv-txt"><div class="nv-main"><span class="nv-d" id="nv-main"></span></div><div class="nv-sub" id="nv-sub"></div></div>
       <button class="nv-x" id="nv-close" type="button" aria-label="안내 종료"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
-    <div class="nv-in nv-nexttxt" id="nv-nexttxt"></div>
   </div>
   <div class="nv-mapwrap">
     <div class="nv-map" id="nv-map"></div>
     <span class="fb" id="nv-floor"></span>
-    <button class="nv-chip" id="nv-mode" type="button"></button>
+    <span class="nv-chip" id="nv-mode"></span>
     <button class="nv-recenter" id="nv-recenter" type="button" aria-label="내 위치로"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
   </div>
   <div class="nv-bottom">
     <div class="nv-in nv-col" id="nv-run">
       <div class="nv-rem"><b id="nv-time"></b><span id="nv-dist"></span></div>
       <div class="nv-bar"><i id="nv-prog"></i></div>
-      <button type="button" class="btn" id="nv-confirm" hidden>도착했어요</button>
-      <p class="nv-hint">점이 실제 위치와 다르면 지도에서 내 위치를 꾹 누르세요</p>
+      <div class="nv-next" id="nv-next" hidden><p id="nv-next-t"></p><button type="button" class="btn" id="nv-confirm"></button></div>
+      <p class="nv-hint">GPS 점이 실제 위치와 다르면 지도에서 내 위치를 꾹 누르세요</p>
     </div>
     <div class="nv-in nv-col" id="nv-done" hidden>
       <div class="nv-arrive"><span class="nv-ico dest"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><div><b>도착했어요</b><span id="nv-arrived-name"></span></div></div>
@@ -874,14 +866,14 @@ function updateSheetH(){document.documentElement.style.setProperty('--sheet-h',$
 function renderSheet(){
   const sh=$('msheet');
   if(mode==='preview'&&route){
-    const R=route,B=R.B,ready=[R.A.b,B.b].some(b=>GEO.ready[b]&&!GEO.est[b]);
+    const R=route,B=R.B,ready=[R.A.b,B.b].some(b=>GEO.ready[b]);
     sh.innerHTML=`<div class="ms-in"><div class="grab"></div>
       <div class="pv-top"><div class="t"><small>도착${toId===NEAR_WC?' · 가장 가까운 화장실':''}</small><b>${B.n}</b><span class="pv-k">${badge(B.k)}${BLD[B.b].name}</span></div><button class="mbtn sm" id="pv-close" type="button" aria-label="경로 닫기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <div class="summary"><span class="big">약 ${fmtTime(R.secs)}</span><span class="meta">${Math.round(R.total)}m 정도</span></div>
       <div class="flow">${R.runs.map(r=>r.type==='walk'?badge(r.k):r.type==='stair'?`<span class="via">${r.to>r.from?'▲':'▼'} ${r.st.n}</span>`:'<span class="via">⇢ 연결통로</span>').join('')}${R.runs.length>1?'':'<span>같은 층 안에서 이동</span>'}</div>
       <div class="pv-from">출발 · ${fromLabel()}</div>
       <button class="btn go" id="navstart" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z"/></svg>안내 시작</button>
-      ${ready?'':'<p class="m-note">아직 GPS 준비 중이라 안내 중에 위치가 저절로 움직이지 않아요. 계단이나 갈림길에서 다음 버튼을 눌러 주세요.</p>'}
+      ${ready&&gpsPossible()?'':'<p class="m-note">지금은 GPS를 쓸 수 없어서 지나간 길이 저절로 지워지지 않아요. 안내 중에 지도에서 내 위치를 꾹 눌러 옮겨 주세요.</p>'}
       <details class="pv-steps"><summary>단계별 안내 보기</summary><ol class="steps">${R.steps.map(s=>`<li><span class="si ${s.c}">${s.i}</span><span>${s.t}</span></li>`).join('')}</ol></details></div>`;
     $('pv-close').onclick=()=>{toId=null;route=null;lastRoute=null;mode='idle';renderAll(false);if(!centerOnMe(true))centerDefault();};
     $('navstart').onclick=startNav;
@@ -1032,8 +1024,7 @@ $('msearch').onclick=()=>openSearch('to');
 function onNavClosed(){
   if(!NAV.plan)return;
   if(NAV.arrived){const B=NAV.B;myB=B.b;myFloor=B.f;fromId=B.id;fromKind=gpsState==='ok'?'gps':'manual';toId=null;route=null;lastRoute=null;mode='idle';viewK=B.k;renderAll(true);return;}
-  const {L}=legAt(NAV.target);const k=L.type==='walk'?L.k:L.nextK;
-  const pos=L.type==='walk'?pointAt(L,NAV.target-L.start):{x:L.nextPts[0][0],y:L.nextPts[0][1]};
+  const L=NAV.plan.legs[NAV.li],k=L.k,pos=pointAt(L,NAV.u);
   myB=k[0];myFloor=+k[1];
   const p=nearestPlace(k,pos.x,pos.y);if(p)fromId=p.id;
   fromKind=gpsState==='ok'?'gps':'manual';viewK=k;refreshRoute(true);
@@ -1068,6 +1059,7 @@ function floorSVG(k,o={}){
     const pts=line.map(q=>`${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
     s+=`<polyline class="path" points="${pts}"/><polyline class="path-dash" points="${pts}"/>`;
   }
+  if(o.routeId)s+=`<g id="${o.routeId}"></g>`;
   if(o.startPt)s+=`<circle class="mk-s" cx="${o.startPt[0]}" cy="${o.startPt[1]}" r="7"/>`;
   if(o.endPt){const[x,y]=o.endPt;s+=`<path class="mk-e" d="M${x} ${y} l-7 -11 a8.5 8.5 0 1 1 14 0 z"/><circle cx="${x}" cy="${y-15}" r="3" fill="var(--surface)"/>`;}
   return s+'</svg>';
@@ -1080,25 +1072,15 @@ function mapBlock(k,o,note,focusX){
   return wrap;
 }
 
-/* ---------- 실시간 안내 ---------- */
-const STAIR_M_PER_FLOOR=12, STEP_M=0.72, WALK_MPS=1.4;
-const NAV={on:false,mode:'time',voice:false};
-try{NAV.voice=localStorage.getItem('jm-voice')==='1';}catch(e){}
-const NI={
-  left:'<path d="M18 20v-7a4 4 0 0 0-4-4H5"/><path d="M9 5 5 9l4 4"/>',
-  right:'<path d="M6 20v-7a4 4 0 0 1 4-4h9"/><path d="m15 5 4 4-4 4"/>',
-  straight:'<path d="M12 20V4"/><path d="m6 10 6-6 6 6"/>',
-  up:'<path d="M3 20h5v-5h5v-5h5V5h3"/>',
-  down:'<path d="M3 5h3v5h5v5h5v5h5"/>',
-  bridge:'<path d="M3 12h15"/><path d="m13 6 6 6-6 6"/><path d="M3 7h3M3 17h3"/>',
-  dest:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>'
-};
-const nico=k=>`<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${NI[k]}</svg>`;
+/* ---------- 길 따라가기 (GPS만 사용) ---------- */
+// 지도에 갈 길만 보여주고, GPS 점이 지나간 부분은 지움. 층은 GPS가 몰라서 계단에서는 'N층 도착' 버튼으로 넘김
+const STAIR_M_PER_FLOOR=12, WALK_MPS=1.4, ARRIVE_M=6;
+const NAV={on:false};
 
 function simplify(pts){
   const out=[];
   for(const p of pts){if(out.length&&dist(out[out.length-1],p)<0.5)continue;out.push(p);}
-  for(let i=out.length-2;i>0;i--){
+  for(let i=out.length-2;i>=1;i--){
     const a=out[i-1],b=out[i],c=out[i+1],ux=b[0]-a[0],uy=b[1]-a[1],vx=c[0]-b[0],vy=c[1]-b[1];
     const cr=(ux*vy-uy*vx)/(Math.hypot(ux,uy)*Math.hypot(vx,vy)),dt=ux*vx+uy*vy;
     if(Math.abs(cr)<0.05&&dt>0)out.splice(i,1);
@@ -1107,182 +1089,100 @@ function simplify(pts){
 }
 function buildPlan(R){
   const legs=[];
-  R.runs.forEach((r,i)=>{
-    const next=R.runs[i+1];
+  R.runs.forEach(r=>{
     if(r.type==='walk'){
       const pts=simplify(r.pts),cum=[0];
       for(let j=1;j<pts.length;j++)cum.push(cum[j-1]+dist(pts[j-1],pts[j])*um(r.k));
-      const man=[];
-      for(let j=1;j<pts.length-1;j++){
-        const a=pts[j-1],b=pts[j],c=pts[j+1],ux=b[0]-a[0],uy=b[1]-a[1],vx=c[0]-b[0],vy=c[1]-b[1];
-        const cr=(ux*vy-uy*vx)/(Math.hypot(ux,uy)*Math.hypot(vx,vy));
-        if(Math.abs(cr)<0.3)continue;
-        man.push({at:cum[j],kind:cr>0?'right':'left',exit:i===0&&j===1,j});
-      }
-      const end={at:cum[cum.length-1],kind:!next?'dest':next.type==='stair'?(next.to>next.from?'up':'down'):'bridge',next};
-      const lastTurn=man[man.length-1];
-      if(lastTurn&&lastTurn.j===pts.length-2&&end.at-lastTurn.at<5){end.side=lastTurn.kind;man.pop();}
-      man.push(end);
-      legs.push({type:'walk',k:r.k,pts,cum,len:cum[cum.length-1],man});
-    }else if(r.type==='stair'){
-      legs.push({type:'stair',st:r.st,from:r.from,to:r.to,len:Math.abs(r.to-r.from)*STAIR_M_PER_FLOOR,nextK:next.k,nextPts:simplify(next.pts)});
-    }else{
-      legs.push({type:'bridge',fromK:r.fromK,toK:r.toK,len:BRIDGE.len*M_PER_UNIT,nextK:next.k,nextPts:simplify(next.pts)});
-    }
+      legs.push({type:'walk',k:r.k,pts,cum,len:cum[cum.length-1]});
+    }else if(r.type==='stair')legs.push({type:'stair',st:r.st,from:r.from,to:r.to,len:Math.abs(r.to-r.from)*STAIR_M_PER_FLOOR});
+    else legs.push({type:'bridge',fromK:r.fromK,toK:r.toK,len:BRIDGE.len*M_PER_UNIT});
   });
-  let s=0;const items=[];
-  legs.forEach((l,i)=>{l.start=s;
-    if(l.type==='walk')l.man.forEach(m=>items.push({...m,g:s+m.at,leg:i}));
-    else items.push({kind:l.type==='stair'?'arrive-floor':'arrive-bldg',g:s+l.len,leg:i,L:l});
-    s+=l.len;});
-  return {legs,items,total:s};
-}
-function manInfo(m,d){
-  const D=d>=4?`${Math.round(d)}미터 앞`:'';
-  const sideW=m.side==='left'?'왼쪽':m.side==='right'?'오른쪽':'';
-  switch(m.kind){
-    case 'left':case 'right':{const w=m.kind==='left'?'왼쪽':'오른쪽';
-      return {ico:m.kind,t:`${w}으로`,sub:m.exit?`방에서 나와 ${w}으로 가요`:`복도를 따라 ${w}으로 꺾어요`,say:m.exit?`방에서 나와 ${w}으로 가세요`:`${D?D+'에서 ':''}${w}으로 도세요`};}
-    case 'up':case 'down':{const n=m.next,ud=m.kind==='up'?'올라가':'내려가';
-      return {ico:m.kind,t:`${sideW?sideW+' ':''}계단`,sub:`${n.st.n}으로 ${n.to}층까지 ${ud}요`,say:`${D?D+' ':''}${sideW?sideW+' ':''}${n.st.n}으로 ${n.to}층까지 ${ud}세요`};}
-    case 'bridge':return {ico:'bridge',t:'연결통로',sub:`${kname(m.next.toK)}으로 건너가요`,say:`${D?D+' ':''}연결통로로 ${kname(m.next.toK)}으로 건너가세요`};
-    case 'dest':return {ico:'dest',t:sideW?`${sideW}에 목적지`:'목적지',sub:lab(NAV.B),say:`${D?D+' ':''}${sideW?sideW+'에 ':''}목적지가 있습니다`};
-    case 'arrive-floor':{const L=m.L;return {ico:L.to>L.from?'up':'down',t:`${L.to}층 도착`,sub:`${L.st.n}으로 계속 ${L.to>L.from?'올라가요':'내려가요'}`,say:''};}
-    default:return {ico:'bridge',t:`${kname(m.L.toK)} 도착`,sub:'연결통로를 따라 직진해요',say:''};
-  }
+  let s=0;legs.forEach(l=>{l.start=s;s+=l.len;});
+  return {legs,total:s};
 }
 function pointAt(L,u){
+  if(L.pts.length<2)return {x:L.pts[0][0],y:L.pts[0][1],j:1};
   let j=1;while(j<L.cum.length-1&&L.cum[j]<u)j++;
   const a=L.pts[j-1],b=L.pts[j],seg=(L.cum[j]-L.cum[j-1])||1,t=Math.min(1,Math.max(0,(u-L.cum[j-1])/seg));
-  return {x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,ang:Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI,j};
+  return {x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,j};
 }
-
-/* ---------- 걸음·방향 감지 (실내 내비) ---------- */
-const STEPS_PER_FLOOR=22;
-const SENS={fast:9.8,slow:9.8,armed:true,last:0,ok:false,bound:false};
-const HEAD={ok:false,bound:false,h:null,ref:null};
-const angDiff=(a,b)=>((a-b+540)%360)-180;
-function onMotion(e){
-  const a=e.accelerationIncludingGravity;if(!a||a.x==null)return;
-  if(!SENS.ok){SENS.ok=true;if(NAV.on&&NAV.mode==='time'&&NAV.playing)NAV.mode='pdr';}
-  const m=Math.hypot(a.x,a.y,a.z),now=performance.now();
-  SENS.fast=SENS.fast*0.7+m*0.3;SENS.slow=SENS.slow*0.98+m*0.02;
-  const diff=SENS.fast-SENS.slow;
-  if(SENS.armed&&diff>1.1&&now-SENS.last>300){SENS.armed=false;SENS.last=now;onStep();}
-  if(diff<0.3)SENS.armed=true;
+const navLeg=()=>NAV.plan.legs[NAV.li];
+const isLastLeg=i=>!NAV.plan.legs.slice(i+1).some(l=>l.type==='walk');
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
+/* 경로 위 한 지점(구간 li, 그 구간에서 u m)으로 옮김 */
+function navGo(li,u){
+  const L=NAV.plan.legs[li];
+  NAV.li=li;NAV.u=Math.max(0,Math.min(u,L.len));
+  if(isLastLeg(li)&&L.len-NAV.u<=ARRIVE_M)navArrive();
 }
-function onOrient(e){
-  let h=null;
-  if(typeof e.webkitCompassHeading==='number'&&!isNaN(e.webkitCompassHeading))h=e.webkitCompassHeading;
-  else if(e.alpha!=null)h=360-e.alpha;
-  if(h==null||isNaN(h))return;
-  HEAD.ok=true;
-  HEAD.h=HEAD.h==null?h:(HEAD.h+angDiff(h,HEAD.h)*0.3+360)%360;
-  onHeading();
+function navArrive(){
+  if(NAV.arrived)return;
+  NAV.arrived=true;NAV.u=navLeg().len;buzz([80,60,80]);
+  $('nv-arrived-name').textContent=lab(NAV.B);$('nv-run').hidden=true;$('nv-done').hidden=false;
 }
-function startSensors(){
-  // 리스너는 바로 붙이고(안드로이드), 아이폰처럼 권한을 물어야 하는 곳은 따로 요청
-  if(!SENS.bound){window.addEventListener('devicemotion',onMotion);SENS.bound=true;}
-  if(!HEAD.bound){window.addEventListener('deviceorientation',onOrient);HEAD.bound=true;}
-  try{if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function')DeviceMotionEvent.requestPermission().catch(()=>{});}catch(e){}
-  try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function')DeviceOrientationEvent.requestPermission().catch(()=>{});}catch(e){}
-}
-function legAt(s){const P=NAV.plan;let i=P.legs.findIndex(l=>s<l.start+l.len-1e-6);if(i<0)i=P.legs.length-1;return {L:P.legs[i],i};}
-const isTurn=m=>m.kind==='left'||m.kind==='right'||!!m.side;
-function nextTurn(i){return NAV.plan.items.find(m=>m.leg===i&&isTurn(m)&&m.g>=NAV.target-0.3&&!NAV.passed.has(m));}
-/* 걸음마다 경로를 따라 앞으로. 꺾는 곳에서는 몸을 돌릴 때까지 조금만 지나치게 함 */
-function onStep(){
-  if(!NAV.on||!NAV.playing||NAV.arrived)return;
-  NAV.steps++;
-  if(NAV.mode!=='pdr')return;
-  const {L,i}=legAt(NAV.target);
-  let nt=NAV.target+(L.type==='stair'?STAIR_M_PER_FLOOR/STEPS_PER_FLOOR:STEP_M);
-  if(L.type==='walk'&&HEAD.ok){
-    const m=nextTurn(i);
-    if(m){const lim=m.g+(m.side?-0.01:2);
-      if(nt>lim){if(++NAV.clampSteps>8){NAV.passed.add(m);NAV.clampSteps=0;}else nt=Math.max(NAV.target,lim);}}
+/* GPS 위치를 한 구간에 투영: 경로에서 떨어진 거리(off, m)와 경로를 따라간 거리(along). from보다 뒤로는 안 감 */
+function projLeg(L,f,from){
+  const b=L.k[0];if(!GEO.ready[b]||L.pts.length<2)return null;
+  const [x,y]=ll2map(b,f.lat,f.lng),sc=scaleOf(b);let best=null;
+  for(let j=1;j<L.pts.length;j++){
+    if(L.cum[j]<from)continue;
+    const a=L.pts[j-1],q=proj([x,y],[a,L.pts[j]]),off=dist(q,[x,y])*sc,along=Math.max(from,L.cum[j-1]+dist(a,q)*um(L.k));
+    const score=off+0.15*(along-from); // 길이 되돌아가는 곳에서는 가까운 앞쪽을 먼저
+    if(!best||score<best.score)best={off,along,score};
   }
-  NAV.target=Math.min(NAV.plan.total,nt);
+  return best;
 }
-/* 몸을 크게 돌리면(55° 이상) 근처 갈림길을 지난 걸로 보고 위치를 갈림길에 맞춤 */
-function onHeading(){
-  if(!NAV.on||NAV.mode!=='pdr'||NAV.arrived)return;
-  const {L,i}=legAt(NAV.target);
-  if(L.type!=='walk'){HEAD.ref=HEAD.h;return;}
-  if(HEAD.ref==null){HEAD.ref=HEAD.h;return;}
-  const d=angDiff(HEAD.h,HEAD.ref);
-  if(Math.abs(d)<25){HEAD.ref=(HEAD.ref+d*0.03+360)%360;return;}
-  if(Math.abs(d)<55)return;
-  const dir=d>0?'right':'left';
-  const m=NAV.plan.items.find(x=>x.leg===i&&(x.kind===dir||x.side===dir)&&x.g>=NAV.target-6&&x.g<=NAV.target+12&&!NAV.passed.has(x));
-  if(m){NAV.passed.add(m);NAV.target=Math.max(NAV.target,m.side?m.g:m.g+0.5);NAV.clampSteps=0;}
-  HEAD.ref=HEAD.h;
+/* 앞으로만 감. 한 번에 너무 멀리 튀지 않게 GPS 간격만큼만 */
+function navTrack(f){
+  const now=performance.now(),dt=NAV.lastFixT?Math.min(20,(now-NAV.lastFixT)/1000):1,step=5+3*dt;
+  const tol=f.acc+10,cur=projLeg(navLeg(),f,NAV.u);
+  const T=NAV.plan.legs[NAV.li+1],N=NAV.plan.legs[NAV.li+2];
+  // 연결통로는 건물이 바뀌니까 GPS로 넘어감
+  if(T&&T.type==='bridge'&&N){const nx=projLeg(N,f,0);
+    if(nx&&nx.off<=tol&&(!cur||nx.off+3<cur.off)){NAV.lastFixT=now;navGo(NAV.li+2,Math.min(nx.along,step));return;}}
+  if(!cur||cur.off>tol)return;
+  NAV.lastFixT=now;
+  if(cur.along>NAV.u)navGo(NAV.li,Math.min(cur.along,NAV.u+step));
 }
-/* GPS는 보조: 정확도 12m 이내인데 15m 넘게 어긋난 게 4번 연속일 때만 바로잡음 */
 function onNavFix(f,e){
   if(!NAV.on)return;
-  if(e){if(e.code===0||e.code===1)NAV.gpsDenied=true;return;}
-  if(NAV.arrived||!NAV.playing||f.acc>12)return;
-  const {L}=legAt(NAV.target);if(L.type!=='walk')return;
-  const b=L.k[0];if(!GEO.ready[b]||GEO.est[b])return;
-  const [x,y]=ll2map(b,f.lat,f.lng),sc=scaleOf(b);
-  let best=null;
-  for(let j=1;j<L.pts.length;j++){const a=L.pts[j-1],q=proj([x,y],[a,L.pts[j]]),dp=dist(q,[x,y])*sc;
-    if(dp>f.acc+8)continue;const along=L.cum[j-1]+dist(a,q)*um(L.k);if(!best||dp<best.dp)best={dp,along};}
-  if(!best){NAV.gpsOff=0;return;}
-  const sg=L.start+best.along;
-  if(Math.abs(sg-NAV.target)>15){if(++NAV.gpsOff>=4){NAV.target=sg;NAV.s=sg;NAV.gpsOff=0;}}else NAV.gpsOff=0;
+  if(e){NAV.gpsErr=e;drawNav();return;}
+  NAV.gpsErr=null;NAV.fix=f;
+  if(!NAV.arrived&&f.acc<=25)navTrack(f);
+  drawNav();
 }
-function modeText(){
-  if(NAV.mode==='time')return NAV.playing?'센서 없음 · 걷는 속도로 자동 이동':'멈춤 · 누르면 계속';
-  if(!SENS.ok)return '걸음 센서 확인 중…';
-  return `걸음 ${NAV.steps}${HEAD.ok?' · 방향 감지':''}`;
+function gpsChip(b){
+  const f=NAV.fix;
+  if(NAV.gpsErr&&!f)return 'GPS 안 됨';
+  if(!f)return 'GPS 찾는 중…';
+  if(!GEO.ready[b])return 'GPS 준비 전 건물';
+  return `GPS ±${Math.round(f.acc)}m`;
 }
-function say(t){
-  if(!NAV.voice||!t)return;
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ko-KR';u.rate=1.05;speechSynthesis.speak(u);}catch(e){}
-}
-const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
+const fmtSec=s=>{s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return m?`${m}분 ${s%60}초`:`${s}초`;};
 
 function startNav(){
   if(!lastRoute)return;
-  startSensors();
   NAV.plan=buildPlan(lastRoute);NAV.A=lastRoute.A;NAV.B=lastRoute.B;
-  Object.assign(NAV,{on:true,s:0,target:0,playing:true,curK:null,lastT:0,cur:-1,steps:0,arrived:false,freeUntil:0,mode:'pdr',uiKey:'',gpsDenied:false,gpsOff:0,clampSteps:0,passed:new Set(),lastLeg:-1,t0:performance.now()});
-  HEAD.ref=HEAD.h;
+  Object.assign(NAV,{on:true,li:0,u:0,curK:null,arrived:false,freeUntil:0,gpsErr:null,lastFixT:0,fix:GPS.last&&Date.now()-GPS.last.t<30000?GPS.last:null});
   if(NAV.gpsUnsub){NAV.gpsUnsub();NAV.gpsUnsub=null;}
-  if(gpsPossible()&&(GEO.ready.M||GEO.ready.C))NAV.gpsUnsub=gpsSub(onNavFix);
+  if(gpsPossible())NAV.gpsUnsub=gpsSub(onNavFix);else NAV.gpsErr={code:0};
   $('navui').hidden=false;document.body.style.overflow='hidden';
   $('nv-run').hidden=false;$('nv-done').hidden=true;
-  $('nv-voice').setAttribute('aria-pressed',NAV.voice);
+  $('nv-main').textContent=NAV.B.n;$('nv-sub').textContent=`${kname(NAV.B.k)}${toId===NEAR_WC?' · 가장 가까운 화장실':''}`;
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{NAV.lock=l;}).catch(()=>{});}catch(e){}
-  requestAnimationFrame(navTick);
+  drawNav();
 }
 function stopNav(){
   NAV.on=false;$('navui').hidden=true;document.body.style.overflow='';
   if(NAV.gpsUnsub){NAV.gpsUnsub();NAV.gpsUnsub=null;}
-  try{speechSynthesis.cancel();}catch(e){}
   try{NAV.lock&&NAV.lock.release();}catch(e){}NAV.lock=null;
   if(typeof onNavClosed==='function')onNavClosed();
 }
-function navTick(t){
-  if(!NAV.on)return;
-  const dt=NAV.lastT?Math.min(0.1,(t-NAV.lastT)/1000):0;NAV.lastT=t;
-  if(NAV.playing&&!NAV.arrived){
-    if(NAV.mode==='pdr'&&!SENS.ok&&t-NAV.t0>2500)NAV.mode='time';
-    if(NAV.mode==='time')NAV.target=Math.min(NAV.plan.total,NAV.target+dt*WALK_MPS);
-  }
-  NAV.s+=(NAV.target-NAV.s)*Math.min(1,dt*5);
-  if(Math.abs(NAV.target-NAV.s)<0.02)NAV.s=NAV.target;
-  drawNav();
-  requestAnimationFrame(navTick);
-}
 function navMap(key){
   const P=NAV.plan;
-  const o={lines:P.legs.filter(l=>l.type==='walk'&&l.k===key).map(l=>l.pts),
-    stairs:new Set(P.legs.filter(l=>l.type==='stair').map(l=>l.st.id)),
+  const o={stairs:new Set(P.legs.filter(l=>l.type==='stair').map(l=>l.st.id)),routeId:'nv-route',
     end:NAV.B.k===key?NAV.B.id:null,endPt:NAV.B.k===key?[NAV.B.cx,NAV.B.cy]:null};
-  $('nv-map').innerHTML=floorSVG(key,o).replace(/<\/svg>$/,'<polyline class="path-done" id="nv-trail" points=""/><g id="nv-me"><circle class="me-halo" r="18"/><path class="me-dir" id="nv-dir" d="M19 0 9 -7 9 7Z"/><circle class="me-dot" r="7.5"/></g></svg>');
+  $('nv-map').innerHTML=floorSVG(key,o).replace(/<\/svg>$/,'<g id="nv-me" style="display:none"><circle class="st-acc" id="nv-acc" r="10"/><circle class="me-halo" r="16"/><circle class="me-dot" r="7.5"/></g></svg>');
   const svg=$('nv-map').querySelector('svg');svg.style.width=mapW(key,'nv-map')+'px';
   $('nv-floor').className='fb f'+key[1];$('nv-floor').textContent=kname(key);
   NAV.curK=key;NAV.freeUntil=0;
@@ -1294,74 +1194,52 @@ function center(x,y){
   const br=box.getBoundingClientRect(),sr=svg.getBoundingClientRect();
   box.scrollLeft=(x-vb[0])*sc+sr.left-br.left+box.scrollLeft-box.clientWidth/2;box.scrollTop=(y-vb[1])*sc+sr.top-br.top+box.scrollTop-box.clientHeight/2;
 }
-const fmtSec=s=>{s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return m?`${m}분 ${s%60}초`:`${s}초`;};
 function drawNav(){
-  const P=NAV.plan,s=NAV.s;
-  let li=P.legs.findIndex(l=>s<l.start+l.len-1e-6);if(li<0)li=P.legs.length-1;
-  const L=P.legs[li],loc=s-L.start;
-  if(li!==NAV.lastLeg){NAV.lastLeg=li;HEAD.ref=HEAD.h;NAV.clampSteps=0;}
-  const key=L.type==='walk'?L.k:L.nextK;
+  if(!NAV.on)return;
+  const P=NAV.plan,L=navLeg(),key=L.k,b=key[0];
   if(NAV.curK!==key)navMap(key);
-  let pos,waiting=false;
-  if(L.type==='walk')pos=pointAt(L,loc);
-  else{const p=L.nextPts;pos={x:p[0][0],y:p[0][1],ang:Math.atan2(p[1][1]-p[0][1],p[1][0]-p[0][0])*180/Math.PI};waiting=true;}
-  const me=$('nv-me');me.setAttribute('transform',`translate(${pos.x.toFixed(1)} ${pos.y.toFixed(1)})`);me.classList.toggle('wait',waiting);
-  $('nv-dir').setAttribute('transform',`rotate(${pos.ang.toFixed(1)})`);
-  const ft=kname(key)+(L.type==='walk'?'':' · 미리보기');if($('nv-floor').textContent!==ft)$('nv-floor').textContent=ft;
-  // 지나간 길은 회색으로 덮음
-  $('nv-trail').setAttribute('points',L.type==='walk'?[...L.pts.slice(0,pos.j),[pos.x,pos.y]].map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '):'');
-  center(pos.x,pos.y);
-  let ci=P.items.findIndex(m=>m.g>s+0.15||(m.leg===li&&L.type==='walk'&&m.g>=L.start+L.len-1e-6));
-  if(ci<0)ci=P.items.length-1;
-  const m=P.items[ci],d=Math.max(0,m.g-s),info=manInfo(m,d);
-  let main,sub=info.sub,ico=info.ico;
-  if(L.type==='stair'){
-    const up=L.to>L.from,fl=L.from+Math.round((L.to-L.from)*Math.min(1,loc/L.len));
-    main=`<span class="nv-d">${L.to}층까지</span><small>${up?'올라가세요':'내려가세요'}</small>`;
-    sub=`${L.st.n} · 지금 약 ${fl}층`;ico=up?'up':'down';
-  }else if(L.type==='bridge'){
-    main=`<span class="nv-d">${Math.ceil(d)}m</span><small>연결통로 직진</small>`;sub=`${kname(L.toK)}으로 건너가요`;
-  }else main=d>=2.5?`<span class="nv-d">${Math.round(d)}m</span><small>${info.t}</small>`:`<span class="nv-d">${info.t}</span>`;
-  // '그 다음'은 다음 안내가 10m 안에 바로 이어질 때만
-  const nx=P.items[ci+1];
-  let nextTxt='';
-  if(nx&&nx.g-m.g<=10){const ni=manInfo(nx,nx.g-m.g);nextTxt=`그 다음 · ${ni.t}${nx.kind==='up'||nx.kind==='down'?` (${nx.next.to}층)`:''}`;}
-  const uiKey=main+sub+ico+nextTxt;
-  if(uiKey!==NAV.uiKey){
-    NAV.uiKey=uiKey;
-    $('nv-ico').innerHTML=nico(ico);$('nv-ico').className='nv-ico '+(ico==='dest'?'dest':ico==='up'||ico==='down'?'stair':'');
-    $('nv-main').innerHTML=main;$('nv-sub').textContent=sub;$('nv-nexttxt').textContent=nextTxt;
-  }
-  if(ci!==NAV.cur){
-    if(NAV.cur>=0)buzz(60);
-    NAV.cur=ci;
-    if(L.type==='stair')say(`${L.st.n}으로 ${L.to}층까지 ${L.to>L.from?'올라가세요':'내려가세요'}`);
-    else say(info.say);
-  }
-  const rem=Math.max(0,P.total-s),eta=new Date(Date.now()+rem/WALK_MPS*1000);
+  // 갈 길만 그림 (지나간 부분은 지움)
+  const lines=[];
+  P.legs.forEach((l,i)=>{
+    if(l.type!=='walk'||l.k!==key||i<NAV.li)return;
+    if(i>NAV.li){lines.push(l.pts);return;}
+    if(NAV.arrived||NAV.u>=l.len-0.05)return;
+    const p=pointAt(l,NAV.u);lines.push([[p.x,p.y],...l.pts.slice(p.j)]);
+  });
+  $('nv-route').innerHTML=lines.filter(ln=>ln.length>1).map(ln=>{const pts=ln.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');return `<polyline class="path" points="${pts}"/><polyline class="path-dash" points="${pts}"/>`;}).join('');
+  // GPS 점은 받은 그대로 표시
+  const f=NAV.fix,me=$('nv-me');let at=null;
+  if(f&&Date.now()-f.t<30000&&GEO.ready[b]){
+    at=ll2map(b,f.lat,f.lng);
+    me.setAttribute('transform',`translate(${at[0].toFixed(1)} ${at[1].toFixed(1)})`);$('nv-acc').setAttribute('r',Math.max(8,f.acc/scaleOf(b)).toFixed(1));me.style.display='';
+  }else me.style.display='none';
+  const p=pointAt(L,NAV.u);
+  center(...(at||[p.x,p.y]));
+  const chip=gpsChip(b);if($('nv-mode').textContent!==chip)$('nv-mode').textContent=chip;
+  // 남은 거리
+  const rem=Math.max(0,P.total-(L.start+NAV.u)),eta=new Date(Date.now()+rem/WALK_MPS*1000);
   $('nv-time').textContent=fmtSec(rem/WALK_MPS);
   $('nv-dist').textContent=`${Math.round(rem)}m · ${String(eta.getHours()).padStart(2,'0')}:${String(eta.getMinutes()).padStart(2,'0')} 도착`;
-  $('nv-prog').style.width=(P.total?s/P.total*100:100).toFixed(1)+'%';
-  const cf=$('nv-confirm'),showCf=L.type==='stair';
-  if(cf.hidden===showCf)cf.hidden=!showCf;
-  if(showCf){const t=`${L.to}층에 도착했어요`;if(cf.textContent!==t)cf.textContent=t;}
-  const mt=modeText();if($('nv-mode').textContent!==mt)$('nv-mode').textContent=mt;
-  if(!NAV.arrived&&s>=P.total-0.05){
-    NAV.arrived=true;NAV.playing=false;buzz([80,60,80]);say('목적지에 도착했습니다. 안내를 종료합니다');
-    $('nv-arrived-name').textContent=lab(NAV.B);$('nv-run').hidden=true;$('nv-done').hidden=false;
-  }
+  $('nv-prog').style.width=(P.total?(P.total-rem)/P.total*100:100).toFixed(1)+'%';
+  // 계단·연결통로: 도착하면 버튼으로 다음 층/건물로
+  const T=P.legs[NAV.li+1],nx=$('nv-next');
+  if(T&&!NAV.arrived){
+    const up=T.type==='stair'&&T.to>T.from;
+    $('nv-next-t').textContent=T.type==='stair'?`${T.st.n}으로 ${T.to}층까지 ${up?'올라가세요':'내려가세요'}`:`연결통로로 ${kname(T.toK)}으로 건너가요`;
+    $('nv-confirm').textContent=T.type==='stair'?`${T.to}층에 도착했어요`:`${BLD[T.toK[0]].name}에 도착했어요`;
+    nx.hidden=false;
+  }else nx.hidden=true;
 }
 /* 지도에서 내 위치를 꾹 누르면 그 자리(경로 위 가장 가까운 곳)로 옮김 */
 function placeAt(cx,cy){
   const svg=$('nv-map').querySelector('svg');if(!svg||!NAV.on)return;
   const pt=svg.createSVGPoint();pt.x=cx;pt.y=cy;const p=pt.matrixTransform(svg.getScreenCTM().inverse());
   let best=null;
-  NAV.plan.legs.forEach(L=>{if(L.type!=='walk'||L.k!==NAV.curK)return;
-    for(let j=1;j<L.pts.length;j++){const q=proj([p.x,p.y],[L.pts[j-1],L.pts[j]]),dd=dist(q,[p.x,p.y]);if(!best||dd<best.d)best={d:dd,g:L.start+L.cum[j-1]+dist(L.pts[j-1],q)*um(L.k)};}});
+  NAV.plan.legs.forEach((L,i)=>{if(L.type!=='walk'||L.k!==NAV.curK)return;
+    for(let j=1;j<L.pts.length;j++){const q=proj([p.x,p.y],[L.pts[j-1],L.pts[j]]),dd=dist(q,[p.x,p.y]);if(!best||dd<best.d)best={d:dd,i,u:L.cum[j-1]+dist(L.pts[j-1],q)*um(L.k)};}});
   if(!best||best.d>60){toast('파란 경로 근처를 꾹 눌러 주세요');return;}
-  NAV.passed=new Set(NAV.plan.items.filter(m=>m.g<=best.g+0.01));
-  NAV.target=best.g;NAV.s=best.g;NAV.arrived=false;NAV.clampSteps=0;NAV.freeUntil=0;HEAD.ref=HEAD.h;
-  $('nv-run').hidden=false;$('nv-done').hidden=true;
+  NAV.arrived=false;$('nv-run').hidden=false;$('nv-done').hidden=true;
+  navGo(best.i,best.u);NAV.lastFixT=performance.now();NAV.freeUntil=0;drawNav();
   buzz(40);toast('내 위치를 옮겼어요');
 }
 (function(){
@@ -1375,11 +1253,8 @@ zoomable('stage');zoomable('nv-map');
 $('mz-in').onclick=()=>zoomAt('stage',ZOOM.stage*1.4);
 $('mz-out').onclick=()=>zoomAt('stage',ZOOM.stage/1.4);
 $('nv-close').onclick=stopNav;$('nv-finish').onclick=stopNav;
-$('nv-confirm').onclick=()=>{const {L}=legAt(NAV.target);if(L.type==='stair'){NAV.target=L.start+L.len;NAV.freeUntil=0;}};
-$('nv-mode').onclick=()=>{if(NAV.mode==='time')NAV.playing=!NAV.playing;};
-$('nv-recenter').onclick=()=>{NAV.freeUntil=0;};
-$('nv-voice').onclick=()=>{NAV.voice=!NAV.voice;$('nv-voice').setAttribute('aria-pressed',NAV.voice);try{localStorage.setItem('jm-voice',NAV.voice?'1':'0');}catch(e){}
-  if(NAV.voice){NAV.cur=-1;}else{try{speechSynthesis.cancel();}catch(e){}}};
+$('nv-confirm').onclick=()=>{const N=NAV.plan.legs[NAV.li+2];if(!N)return;navGo(NAV.li+2,0);NAV.lastFixT=performance.now();NAV.freeUntil=0;drawNav();};
+$('nv-recenter').onclick=()=>{NAV.freeUntil=0;drawNav();};
 ['pointerdown','wheel','touchstart'].forEach(ev=>$('nv-map').addEventListener(ev,()=>{NAV.freeUntil=performance.now()+5000;},{passive:true}));
 
 
