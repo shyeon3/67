@@ -1074,7 +1074,7 @@ function mapBlock(k,o,note,focusX){
 
 /* ---------- 길 따라가기 (GPS만 사용) ---------- */
 // 지도에 갈 길만 보여주고, GPS 점이 지나간 부분은 지움. 층은 GPS가 몰라서 계단에서는 'N층 도착' 버튼으로 넘김
-const STAIR_M_PER_FLOOR=12, WALK_MPS=1.4, ARRIVE_M=6;
+const STAIR_M_PER_FLOOR=12, WALK_MPS=1.4, ARRIVE_M=6, GPS_ACC_MAX=15, HOLD_MS=6000;
 const NAV={on:false};
 
 function simplify(pts){
@@ -1112,6 +1112,7 @@ const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
 /* 경로 위 한 지점(구간 li, 그 구간에서 u m)으로 옮김 */
 function navGo(li,u){
   const L=NAV.plan.legs[li];
+  if(li!==NAV.li){NAV.bias=0;NAV.sm=null;NAV.budget=0;}
   NAV.li=li;NAV.u=Math.max(0,Math.min(u,L.len));
   if(isLastLeg(li)&&L.len-NAV.u<=ARRIVE_M)navArrive();
 }
@@ -1132,17 +1133,25 @@ function projLeg(L,f,from){
   }
   return best;
 }
-/* 앞으로만 감. 한 번에 너무 멀리 튀지 않게 GPS 간격만큼만 */
+/* 앞으로만 감. 실내 GPS는 10~20m씩 틀릴 수 있어서 조심스럽게:
+   - GPS 점이 실제로 앞으로 움직인 만큼만 지움 (가만히 있는데 GPS만 틀린 자리를 찍으면 안 지워짐), 걷는 속도(2m/초)까지만
+   - GPS 점보다 조금 뒤까지만 지움
+   - 계단 직후·위치를 직접 옮긴 직후 6초는 GPS로 안 지움 */
 function navTrack(f){
-  const now=performance.now(),dt=NAV.lastFixT?Math.min(20,(now-NAV.lastFixT)/1000):1,step=5+3*dt;
-  const tol=f.acc+10,cur=projLeg(navLeg(),f,NAV.u);
+  const now=performance.now(),dt=NAV.lastFixT?Math.min(5,(now-NAV.lastFixT)/1000):1;NAV.lastFixT=now;
+  if(f.acc>GPS_ACC_MAX)return;
+  const hold=now<NAV.holdUntil,margin=f.acc*0.4,tol=f.acc+10;
+  const cur=projLeg(navLeg(),f,Math.max(0,NAV.u+NAV.bias));
   const T=NAV.plan.legs[NAV.li+1],N=NAV.plan.legs[NAV.li+2];
   // 연결통로는 건물이 바뀌니까 GPS로 넘어감
-  if(T&&T.type==='bridge'&&N){const nx=projLeg(N,f,0);
-    if(nx&&nx.off<=tol&&(!cur||nx.off+3<cur.off)){NAV.lastFixT=now;navGo(NAV.li+2,Math.min(nx.along,step));return;}}
+  if(!hold&&T&&T.type==='bridge'&&N){const nx=projLeg(N,f,0);
+    if(nx&&nx.off<=tol&&(!cur||nx.off+3<cur.off)){navGo(NAV.li+2,Math.min(nx.along-margin,3));return;}}
   if(!cur||cur.off>tol)return;
-  NAV.lastFixT=now;
-  if(cur.along>NAV.u)navGo(NAV.li,Math.min(cur.along,NAV.u+step));
+  const sm=NAV.sm==null?cur.along:NAV.sm+0.4*(cur.along-NAV.sm);
+  if(!hold&&NAV.sm!=null)NAV.budget=Math.min(15,NAV.budget+Math.min(Math.max(0,sm-NAV.sm),2*dt));
+  NAV.sm=sm;
+  const target=Math.min(cur.along-NAV.bias-margin,NAV.u+NAV.budget);
+  if(target>NAV.u){NAV.budget-=target-NAV.u;navGo(NAV.li,target);}
 }
 function onNavFix(f,e){
   if(!NAV.on)return;
@@ -1163,7 +1172,7 @@ const fmtSec=s=>{s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return m?`
 function startNav(){
   if(!lastRoute)return;
   NAV.plan=buildPlan(lastRoute);NAV.A=lastRoute.A;NAV.B=lastRoute.B;
-  Object.assign(NAV,{on:true,li:0,u:0,curK:null,arrived:false,freeUntil:0,gpsErr:null,lastFixT:0,fix:GPS.last&&Date.now()-GPS.last.t<30000?GPS.last:null});
+  Object.assign(NAV,{on:true,li:0,u:0,bias:0,sm:null,budget:0,holdUntil:0,curK:null,arrived:false,freeUntil:0,gpsErr:null,lastFixT:0,fix:GPS.last&&Date.now()-GPS.last.t<30000?GPS.last:null});
   if(NAV.gpsUnsub){NAV.gpsUnsub();NAV.gpsUnsub=null;}
   if(gpsPossible())NAV.gpsUnsub=gpsSub(onNavFix);else NAV.gpsErr={code:0};
   $('navui').hidden=false;document.body.style.overflow='hidden';
@@ -1228,7 +1237,8 @@ function drawNav(){
     $('nv-next-t').textContent=T.type==='stair'?`${T.st.n}으로 ${T.to}층까지 ${up?'올라가세요':'내려가세요'}`:`연결통로로 ${kname(T.toK)}으로 건너가요`;
     $('nv-confirm').textContent=T.type==='stair'?`${T.to}층에 도착했어요`:`${BLD[T.toK[0]].name}에 도착했어요`;
     nx.hidden=false;
-  }else nx.hidden=true;
+  }else if(!NAV.arrived&&rem<=25){$('nv-next-t').textContent='목적지 근처예요';$('nv-confirm').textContent='도착했어요';nx.hidden=false;}
+  else nx.hidden=true;
 }
 /* 지도에서 내 위치를 꾹 누르면 그 자리(경로 위 가장 가까운 곳)로 옮김 */
 function placeAt(cx,cy){
@@ -1239,7 +1249,10 @@ function placeAt(cx,cy){
     for(let j=1;j<L.pts.length;j++){const q=proj([p.x,p.y],[L.pts[j-1],L.pts[j]]),dd=dist(q,[p.x,p.y]);if(!best||dd<best.d)best={d:dd,i,u:L.cum[j-1]+dist(L.pts[j-1],q)*um(L.k)};}});
   if(!best||best.d>60){toast('파란 경로 근처를 꾹 눌러 주세요');return;}
   NAV.arrived=false;$('nv-run').hidden=false;$('nv-done').hidden=true;
-  navGo(best.i,best.u);NAV.lastFixT=performance.now();NAV.freeUntil=0;drawNav();
+  navGo(best.i,best.u);
+  const f=NAV.fix,g=f&&Date.now()-f.t<10000?projLeg(navLeg(),f,0):null;
+  NAV.bias=g?g.along-NAV.u:0;NAV.budget=0; // GPS가 실제보다 얼마나 앞(+)/뒤(-)인지 기억해서 계속 빼줌
+  NAV.holdUntil=performance.now()+HOLD_MS;NAV.freeUntil=0;drawNav();
   buzz(40);toast('내 위치를 옮겼어요');
 }
 (function(){
@@ -1253,7 +1266,7 @@ zoomable('stage');zoomable('nv-map');
 $('mz-in').onclick=()=>zoomAt('stage',ZOOM.stage*1.4);
 $('mz-out').onclick=()=>zoomAt('stage',ZOOM.stage/1.4);
 $('nv-close').onclick=stopNav;$('nv-finish').onclick=stopNav;
-$('nv-confirm').onclick=()=>{const N=NAV.plan.legs[NAV.li+2];if(!N)return;navGo(NAV.li+2,0);NAV.lastFixT=performance.now();NAV.freeUntil=0;drawNav();};
+$('nv-confirm').onclick=()=>{const N=NAV.plan.legs[NAV.li+2];if(!N){if(isLastLeg(NAV.li))navArrive();drawNav();return;}navGo(NAV.li+2,0);NAV.holdUntil=performance.now()+HOLD_MS;NAV.freeUntil=0;drawNav();};
 $('nv-recenter').onclick=()=>{NAV.freeUntil=0;drawNav();};
 ['pointerdown','wheel','touchstart'].forEach(ev=>$('nv-map').addEventListener(ev,()=>{NAV.freeUntil=performance.now()+5000;},{passive:true}));
 
