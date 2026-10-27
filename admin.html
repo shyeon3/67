@@ -620,7 +620,6 @@ function floorSVG(k,o={}){
     const pts=line.map(q=>`${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
     s+=`<polyline class="path" points="${pts}"/><polyline class="path-dash" points="${pts}"/>`;
   }
-  if(o.routeId)s+=`<g id="${o.routeId}"></g>`;
   if(o.startPt)s+=`<circle class="mk-s" cx="${o.startPt[0]}" cy="${o.startPt[1]}" r="7"/>`;
   if(o.endPt){const[x,y]=o.endPt;s+=`<path class="mk-e" d="M${x} ${y} l-7 -11 a8.5 8.5 0 1 1 14 0 z"/><circle cx="${x}" cy="${y-15}" r="3" fill="var(--surface)"/>`;}
   return s+'</svg>';
