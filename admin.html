@@ -301,7 +301,9 @@ img{max-width:100%}
 
 <script>
 const M_PER_UNIT = 0.134; // 교실 한 칸(약 67칸위) ≈ 9m
-const STAIR_COST = 70;    // 한 층 오르내리기 ≈ 9m 걷는 것과 비슷하게
+const UNIT_M = {M:M_PER_UNIT, C:0.115}; // 건물별 도면 1단위 길이(m). 청솔관 도면은 현장 GPS로 재보니 실제보다 14%쯤 크게 그려져 있음
+const um = k => UNIT_M[k[0]];
+const STAIR_COST = 9.4;   // 한 층 오르내리기 ≈ 9m 걷는 것과 비슷하게 (경로 그래프는 m 단위)
 
 function classRow(g){
   const xs=[[70,140,1],[140,205,2],[205,275,3],[275,345,4],[380,445,5],[445,510,6],[510,610,7]];
@@ -426,7 +428,7 @@ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 function proj(p,[a,b]){const dx=b[0]-a[0],dy=b[1]-a[1];let t=((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy);t=Math.max(0,Math.min(1,t));return [a[0]+t*dx,a[1]+t*dy];}
 
 for(const k of KEYS){
-  const B=BLD[k[0]],segs=[...B.segs,...(FLOORS[k].segs||[])];
+  const B=BLD[k[0]],u=um(k),segs=[...B.segs,...(FLOORS[k].segs||[])];
   const pts=segs.map(s=>[s[0],s[1]]);
   segs.forEach((s,i)=>segs.forEach((o,j)=>{if(i!==j)for(const e of o)if(dist(proj(e,s),e)<.6)pts[i].push(e);}));
   for(const p of places.filter(p=>p.k===k)){
@@ -435,24 +437,24 @@ for(const k of KEYS){
     pts[bi].push(best);
     addNode('P:'+p.id,{k,x:p.cx,y:p.cy,place:p});
     addNode(pk(k,...best),{k,x:best[0],y:best[1]});
-    addEdge('P:'+p.id,pk(k,...best),bd*.5);
+    addEdge('P:'+p.id,pk(k,...best),bd*.5*u);
   }
   for(const st of B.stairs){
     const r=stairRect(k,st),c=[(r[0]+r[2])/2,(r[1]+r[3])/2];
     const sk=addNode(`S:${k}:${st.id}`,{k,x:c[0],y:c[1],stair:st});
     addNode(pk(k,...st.door),{k,x:st.door[0],y:st.door[1]});
-    addEdge(sk,pk(k,...st.door),dist(st.door,c));
+    addEdge(sk,pk(k,...st.door),dist(st.door,c)*u);
     segs.forEach((s,i)=>{if(dist(proj(st.door,s),st.door)<.6)pts[i].push(st.door);});
   }
   segs.forEach((s,i)=>{
     const uniq=new Map();for(const p of pts[i])uniq.set(pk(k,...p),p);
     const sorted=[...uniq.values()].sort((p,q)=>dist(s[0],p)-dist(s[0],q));
     sorted.forEach(p=>addNode(pk(k,...p),{k,x:p[0],y:p[1]}));
-    for(let j=0;j<sorted.length-1;j++){const w=dist(sorted[j],sorted[j+1]);if(w>.01)addEdge(pk(k,...sorted[j]),pk(k,...sorted[j+1]),w);}
+    for(let j=0;j<sorted.length-1;j++){const w=dist(sorted[j],sorted[j+1]);if(w>.01)addEdge(pk(k,...sorted[j]),pk(k,...sorted[j+1]),w*u);}
   });
 }
 for(const b of ['M','C'])for(const f of [1,2,3])for(const st of BLD[b].stairs)addEdge(`S:${b}${f}:${st.id}`,`S:${b}${f+1}:${st.id}`,STAIR_COST);
-addEdge(pk(BRIDGE.a.k,...BRIDGE.a.p),pk(BRIDGE.b.k,...BRIDGE.b.p),BRIDGE.len);
+addEdge(pk(BRIDGE.a.k,...BRIDGE.a.p),pk(BRIDGE.b.k,...BRIDGE.b.p),BRIDGE.len*M_PER_UNIT);
 
 function dijkstra(src){
   const d=new Map(),prev=new Map(),done=new Set();
@@ -509,26 +511,26 @@ function fitSim(prs){
   const a=[num[0]/den,num[1]/den];return {a,b:csub(wm,cmul(a,zm))};
 }
 function computeGeo(){
-  const s0=M_PER_UNIT,by={M:[],C:[]};
+  const s0=UNIT_M,by={M:[],C:[]};
   CAL.pts.forEach(p=>{if(by[p.b])by[p.b].push(p);});
   const pr=p=>({z:[p.x,-p.y],w:ll2w(p.lat,p.lng)});
   const fit={},T={};
   const spread=b=>{let m=0;by[b].forEach(p=>by[b].forEach(q=>{m=Math.max(m,Math.hypot(p.x-q.x,p.y-q.y));}));return m;};
-  ['M','C'].forEach(b=>{if(by[b].length>=2&&spread(b)>=150)fit[b]=fitSim(by[b].map(pr));});
+  ['M','C'].forEach(b=>{if(by[b].length>=2&&spread(b)*s0[b]>=20)fit[b]=fitSim(by[b].map(pr));});
   ['M','C'].forEach(b=>{
     if(fit[b]){T[b]=fit[b];return;}
-    const o=b==='M'?'C':'M',a=fit[o]?fit[o].a:[s0,0];
+    const o=b==='M'?'C':'M',a=fit[o]?cmul(fit[o].a,[s0[b]/s0[o],0]):[s0[b],0];
     if(by[b].length>=1){const qs=by[b].map(pr),n=qs.length,zm=qs.reduce((s,q)=>cadd(s,q.z),[0,0]),wm=qs.reduce((s,q)=>cadd(s,q.w),[0,0]);T[b]={a,b:csub([wm[0]/n,wm[1]/n],cmul(a,[zm[0]/n,zm[1]/n]))};}
   });
-  if(!T.M&&!T.C)T.M={a:[s0,0],b:csub([0,0],cmul([s0,0],[260,-105]))};
-  if(!T.C){const wp=cadd(tApply(T.M,BRIDGE_Z.M),cmul(T.M.a,[0,110]));T.C={a:T.M.a,b:csub(wp,cmul(T.M.a,BRIDGE_Z.C))};}
-  if(!T.M){const wp=csub(tApply(T.C,BRIDGE_Z.C),cmul(T.C.a,[0,110]));T.M={a:T.C.a,b:csub(wp,cmul(T.C.a,BRIDGE_Z.M))};}
+  if(!T.M&&!T.C)T.M={a:[s0.M,0],b:csub([0,0],cmul([s0.M,0],[260,-105]))};
+  if(!T.C){const a=cmul(T.M.a,[s0.C/s0.M,0]),wp=cadd(tApply(T.M,BRIDGE_Z.M),cmul(T.M.a,[0,110]));T.C={a,b:csub(wp,cmul(a,BRIDGE_Z.C))};}
+  if(!T.M){const a=cmul(T.C.a,[s0.M/s0.C,0]),wp=csub(tApply(T.C,BRIDGE_Z.C),cmul(a,[0,110]));T.M={a,b:csub(wp,cmul(a,BRIDGE_Z.M))};}
   GEO.T=T;
   ['M','C'].forEach(b=>{
     const n=by[b].length,res=by[b].map(p=>{const q=pr(p),d=csub(tApply(T[b],q.z),q.w);return Math.hypot(d[0],d[1]);});
     const est=n===0&&by[b==='M'?'C':'M'].length>=1; // 이 건물은 안 맞췄지만 다른 건물 보정 + 연결통로로 위치 추정
     GEO.ready[b]=n>=1||est;GEO.est[b]=est;
-    GEO.info[b]={est,full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*M_PER_UNIT),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0,deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
+    GEO.info[b]={est,full:!!fit[b],close:n>=2&&!fit[b],spreadM:Math.round(spread(b)*s0[b]),n,res,rms:n>=3?Math.sqrt(res.reduce((s,r)=>s+r*r,0)/n):null,ratio:Math.hypot(...T[b].a)/s0[b],deg:Math.atan2(T[b].a[1],T[b].a[0])*180/Math.PI};
   });
 }
 computeGeo();
