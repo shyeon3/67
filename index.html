@@ -354,20 +354,24 @@ body{overflow:hidden;overscroll-behavior:none}
 .nv-top:has(.nv-nexttxt:empty) .nv-row{padding-bottom:14px}
 .nv-hint{margin:0;font-size:12px;color:var(--muted);text-align:center}
 /* 안내 화면 단계별 안내 */
-.nv-steps{max-height:clamp(84px,13vh,116px);overflow:auto;overscroll-behavior:contain;position:relative;scroll-behavior:smooth}
+.nv-steps{max-height:clamp(80px,10vh,90px);overflow:auto;overscroll-behavior:contain;position:relative;scroll-behavior:smooth}
 .navui ol.steps{padding:4px 12px}
-.navui #nv-run{gap:6px;padding-block:10px}
-.navui .nv-rem b{font-size:18px}
-.navui .nv-ctrl button{padding-block:11px}
-.nv-steps li{font-size:16px;line-height:1.35;cursor:pointer}
+.navui #nv-run{gap:6px;padding-block:8px 10px}
+.navui .nv-bar{height:4px}
+.nv-ctrl2{display:flex;align-items:center;gap:8px}
+.nv-ctrl2 .nv-rem{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;line-height:1.15}
+.nv-ctrl2 .nv-rem b{font-size:17px}
+.nv-ctrl2 .nv-rem span{font-size:12px;white-space:nowrap}
+.nv-ctrl2 button{flex:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:12px;padding:11px 14px;font-weight:700;font-size:16px;cursor:pointer}
+.nv-ctrl2 .pri{min-width:9em;background:var(--accent);color:#fff;border-color:transparent}
+.nv-ctrl2 button:disabled{opacity:.45;cursor:default}
+.nv-steps li{font-size:15px;line-height:1.35;cursor:pointer}
 .nv-steps li.start{cursor:default}
 .nv-steps li.done{color:var(--muted)}
 .nv-steps li.done .si{background:var(--line);color:var(--muted)}
-.nv-steps li.cur{font-size:18px;font-weight:700;background:var(--surface);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:12px;box-shadow:0 1px 6px rgba(17,26,43,.12)}
+.nv-steps li.cur{font-size:17px;font-weight:700;background:var(--surface);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:12px;box-shadow:0 1px 6px rgba(17,26,43,.12)}
 .nv-steps li.cur::before{left:20px}
 .st-m{color:var(--muted);font-weight:500;font-size:.85em}
-.navui .nv-ctrl button{font-size:16px}
-.nv-ctrl button:disabled{opacity:.45;cursor:default}
 button.nv-chip{font:inherit;font-size:12px}
 html,body{margin:0}
 .top .gut{padding-top:calc(18px + env(safe-area-inset-top,0px))}
@@ -414,10 +418,9 @@ img{max-width:100%}
   </div>
   <div class="nv-bottom">
     <div class="nv-in nv-col" id="nv-run">
-      <div class="nv-rem"><b id="nv-time"></b><span id="nv-dist"></span></div>
       <div class="nv-bar"><i id="nv-prog"></i></div>
       <ol class="steps nv-steps" id="nv-steps" aria-label="단계별 안내 (누르면 그 단계부터)"></ol>
-      <div class="nv-ctrl"><button type="button" id="nv-prev">이전</button><button type="button" class="pri" id="nv-nextbtn">다음 단계</button></div>
+      <div class="nv-ctrl2"><div class="nv-rem"><b id="nv-time"></b><span id="nv-dist"></span></div><button type="button" id="nv-prev">이전</button><button type="button" class="pri" id="nv-nextbtn">다음 단계</button></div>
     </div>
     <div class="nv-in nv-col" id="nv-done" hidden>
       <div class="nv-arrive"><span class="nv-ico dest"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><div><b>도착했어요</b><span id="nv-arrived-name"></span></div></div>
@@ -1154,7 +1157,7 @@ function drawNav(){
   }
   const rem=Math.max(0,P.total-s),eta=new Date(Date.now()+rem/WALK_MPS*1000);
   $('nv-time').textContent=fmtSec(rem/WALK_MPS);
-  $('nv-dist').textContent=`${Math.round(rem)}m · ${String(eta.getHours()).padStart(2,'0')}:${String(eta.getMinutes()).padStart(2,'0')} 도착`;
+  $('nv-dist').textContent=`${Math.round(rem)}m · ${String(eta.getHours()).padStart(2,'0')}:${String(eta.getMinutes()).padStart(2,'0')}`;
   $('nv-prog').style.width=(P.total?s/P.total*100:100).toFixed(1)+'%';
   if(ci!==NAV.ci){NAV.ci=ci;markSteps();}
   const mt=modeText();if($('nv-mode').textContent!==mt)$('nv-mode').textContent=mt;
