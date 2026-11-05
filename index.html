@@ -353,6 +353,17 @@ body{overflow:hidden;overscroll-behavior:none}
 .nv-nexttxt:empty{display:none}
 .nv-top:has(.nv-nexttxt:empty) .nv-row{padding-bottom:14px}
 .nv-hint{margin:0;font-size:12px;color:var(--muted);text-align:center}
+/* 안내 화면 단계별 안내 */
+.nv-steps{max-height:min(34vh,300px);overflow:auto;overscroll-behavior:contain;position:relative;scroll-behavior:smooth}
+.nv-steps li{font-size:16px;line-height:1.35;cursor:pointer}
+.nv-steps li.start{cursor:default}
+.nv-steps li.done{color:var(--muted)}
+.nv-steps li.done .si{background:var(--line);color:var(--muted)}
+.nv-steps li.cur{font-size:18px;font-weight:700;background:var(--surface);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:12px;box-shadow:0 1px 6px rgba(17,26,43,.12)}
+.nv-steps li.cur::before{left:20px}
+.st-m{color:var(--muted);font-weight:500;font-size:.85em}
+.navui .nv-ctrl button{font-size:16px}
+.nv-ctrl button:disabled{opacity:.45;cursor:default}
 button.nv-chip{font:inherit;font-size:12px}
 html,body{margin:0}
 .top .gut{padding-top:calc(18px + env(safe-area-inset-top,0px))}
@@ -394,15 +405,16 @@ img{max-width:100%}
   <div class="nv-mapwrap">
     <div class="nv-map" id="nv-map"></div>
     <span class="fb" id="nv-floor"></span>
-    <button class="nv-chip" id="nv-mode" type="button"></button>
+    <span class="nv-chip" id="nv-mode"></span>
     <button class="nv-recenter" id="nv-recenter" type="button" aria-label="내 위치로"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
   </div>
   <div class="nv-bottom">
     <div class="nv-in nv-col" id="nv-run">
       <div class="nv-rem"><b id="nv-time"></b><span id="nv-dist"></span></div>
       <div class="nv-bar"><i id="nv-prog"></i></div>
-      <button type="button" class="btn" id="nv-confirm" hidden>도착했어요</button>
-      <p class="nv-hint">점이 실제 위치와 다르면 지도에서 내 위치를 꾹 누르세요</p>
+      <ol class="steps nv-steps" id="nv-steps" aria-label="단계별 안내"></ol>
+      <div class="nv-ctrl"><button type="button" id="nv-prev">이전</button><button type="button" class="pri" id="nv-nextbtn">다음 단계</button></div>
+      <p class="nv-hint">단계를 누르면 그 단계부터 다시 안내해요</p>
     </div>
     <div class="nv-in nv-col" id="nv-done" hidden>
       <div class="nv-arrive"><span class="nv-ico dest"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><div><b>도착했어요</b><span id="nv-arrived-name"></span></div></div>
@@ -651,25 +663,7 @@ function computeRoute(fid,tid){
   runs.push(cur);
   const total=d.get('P:'+dest);
   const secs=(total-floors*STAIR_COST)/1.4+floors*12;
-  const steps=[{c:'s',i:'출',t:`<b>${lab(A)}</b>에서 출발`}];
-  runs.forEach((r,k)=>{
-    if(r.type==='walk'){
-      const next=runs[k+1],prevR=runs[k-1];
-      let m=r.d;if(prevR&&prevR.type==='bridge')m-=BRIDGE.len*M_PER_UNIT;
-      m=Math.max(1,Math.round(m));
-      const fb=badge(r.k)+' ';
-      if(next&&next.type==='stair')steps.push({c:'',i:'→',t:`${fb}복도를 따라 약 ${m}m 걸어 <b>${next.st.n}</b>으로`});
-      else if(next)steps.push({c:'',i:'→',t:r.k==='C2'?`${fb}복도를 따라 약 ${m}m 걸어 <b>라운지</b>로 들어가서 안쪽 연결통로로`:`${fb}복도를 따라 약 ${m}m 걸어 <b>복도 끝 연결통로</b>로`});
-      else if(prevR&&prevR.type==='bridge'&&r.k==='C2'&&B.n==='라운지')steps.push({c:'',i:'→',t:`${fb}연결통로를 나오면 바로 라운지예요`});
-      else steps.push({c:'',i:'→',t:`${fb}${prevR&&prevR.type==='bridge'&&r.k==='C2'?'라운지를 지나 ':k?'도착 층에서 ':''}복도를 따라 약 ${m}m 걸어가기`});
-    }else if(r.type==='stair'){
-      steps.push({c:'st',i:r.to>r.from?'▲':'▼',t:`${r.st.n}으로 <b>${r.from}층 → ${r.to}층</b> ${r.to>r.from?'올라가기':'내려가기'} <span style="color:var(--muted)">(${Math.abs(r.to-r.from)}개 층)</span>`});
-    }else{
-      steps.push({c:'st',i:'⇢',t:`연결통로로 <b>${kname(r.fromK)} → ${kname(r.toK)}</b> 건너가기 <span style="color:var(--muted)">(약 ${Math.round(BRIDGE.len*M_PER_UNIT)}m)</span>`});
-    }
-  });
-  steps.push({c:'e',i:'도',t:`<b>${lab(B)}</b> 도착`});
-  return {A,B,runs,total,secs,floors,steps};
+  return {A,B,runs,total,secs,floors};
 }
 function pickDest(id){toId=id;refreshRoute(true);}
 function refreshRoute(recenter){
@@ -764,7 +758,7 @@ function renderSheet(){
       <div class="flow">${R.runs.map(r=>r.type==='walk'?badge(r.k):r.type==='stair'?`<span class="via">${r.to>r.from?'▲':'▼'} ${r.st.n}</span>`:'<span class="via">⇢ 연결통로</span>').join('')}${R.runs.length>1?'':'<span>같은 층 안에서 이동</span>'}</div>
       <div class="pv-from">출발 · ${fromLabel()}</div>
       <button class="btn go" id="navstart" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z"/></svg>안내 시작</button>
-      <details class="pv-steps"><summary>단계별 안내 보기</summary><ol class="steps">${R.steps.map(s=>`<li><span class="si ${s.c}">${s.i}</span><span>${s.t}</span></li>`).join('')}</ol></details></div>`;
+      <details class="pv-steps"><summary>단계별 안내 보기</summary><ol class="steps">${guideStart(R.A)}${routeGuide(R.A,R.B,buildPlan(R)).map(g=>guideLi(g)).join('')}</ol></details></div>`;
     $('pv-close').onclick=()=>{toId=null;route=null;lastRoute=null;mode='idle';renderAll(false);centerDefault();};
     $('navstart').onclick=startNav;
     sh.querySelector('details').addEventListener('toggle',updateSheetH);
@@ -924,7 +918,7 @@ function buildPlan(R){
         const a=pts[j-1],b=pts[j],c=pts[j+1],ux=b[0]-a[0],uy=b[1]-a[1],vx=c[0]-b[0],vy=c[1]-b[1];
         const cr=(ux*vy-uy*vx)/(Math.hypot(ux,uy)*Math.hypot(vx,vy));
         if(Math.abs(cr)<0.3)continue;
-        man.push({at:cum[j],kind:cr>0?'right':'left',exit:i===0&&j===1,j});
+        man.push({at:cum[j],kind:cr>0?'right':'left',exit:i===0&&j===1,first:j===1,j});
       }
       const end={at:cum[cum.length-1],kind:!next?'dest':next.type==='stair'?(next.to>next.from?'up':'down'):'bridge',next};
       const lastTurn=man[man.length-1];
@@ -944,6 +938,35 @@ function buildPlan(R){
     s+=l.len;});
   return {legs,items,total:s};
 }
+/* 단계별 안내 글: 꺾는 곳·계단·연결통로·도착마다 한 단계 (그 지점까지 가는 내용). 미리보기와 안내 화면이 같이 씀 */
+const TURN_W={left:'왼쪽',right:'오른쪽'};
+function routeGuide(A,B,P){
+  let prevG=0;
+  return P.items.map((m,i)=>{
+    const L=P.legs[m.leg],d=Math.round(m.g-prevG);prevG=m.g;
+    const legStart=i===0||P.items[i-1].leg!==m.leg,walk=L.type==='walk';
+    const from=m.leg===0?A.n:P.legs[m.leg-1].type==='stair'?'계단':'연결통로';
+    const viaLounge=from==='연결통로'&&L.k==='C2'&&m.kind!=='dest'?'<b>라운지</b>를 지나 ':'';
+    const lead=legStart&&walk?(m.leg>0?badge(L.k)+' ':'')+`${from}에서 나와 `+viaLounge:'';
+    const go=d>=3?`${d}m 가서 `:'바로 ',side=m.side?TURN_W[m.side]+' ':'';
+    switch(m.kind){
+      case 'left':case 'right':{const w=`<b>${TURN_W[m.kind]}</b>`;
+        return {c:'',i:m.kind==='left'?'←':'→',btn:'다음 단계',t:m.first&&legStart&&from!=='연결통로'?`${lead}${w}으로 가세요`:`${lead}${go}${w}으로 도세요`};}
+      case 'up':case 'down':
+        return {c:'st',i:m.kind==='up'?'▲':'▼',btn:'다음 단계',t:`${lead}${go}${side}<b>${m.next.st.n}</b>으로 가세요`};
+      case 'bridge':
+        return {c:'st',i:'⇢',btn:'다음 단계',t:`${lead}${go}${L.k==='C2'?'<b>라운지</b> 안쪽 ':'복도 끝 '}<b>연결통로</b>로 가세요`};
+      case 'dest':
+        return {c:'e',i:'도',btn:'도착했어요',t:`${lead}${d>=3?`${d}m 가면 `:'바로 '}${m.side?TURN_W[m.side]+'에 ':''}<b>${B.n}</b> 도착`};
+      case 'arrive-floor':{const up=L.to>L.from,n=Math.abs(L.to-L.from);
+        return {c:'st',i:up?'▲':'▼',btn:`${L.to}층 도착`,t:`${L.st.n}으로 <b>${L.to}층</b>까지 ${up?'올라가세요':'내려가세요'}${n>1?` <span class="st-m">(${n}개 층)</span>`:''}`};}
+      default:
+        return {c:'st',i:'⇢',btn:'다 건넜어요',t:`연결통로를 따라 <b>${kname(L.toK)}</b>으로 건너가세요 <span class="st-m">(약 ${Math.round(L.len)}m)</span>`};
+    }
+  });
+}
+const guideStart=A=>`<li class="start"><span class="si s">출</span><span><b>${lab(A)}</b>에서 출발</span></li>`;
+const guideLi=(g,i)=>`<li${i==null?'':` data-i="${i}"`}><span class="si ${g.c}">${g.i}</span><span>${g.t}</span></li>`;
 function manInfo(m,d){
   const D=d>=4?`${Math.round(d)}미터 앞`:'';
   const sideW=m.side==='left'?'왼쪽':m.side==='right'?'오른쪽':'';
@@ -1026,7 +1049,7 @@ function onHeading(){
   HEAD.ref=HEAD.h;
 }
 function modeText(){
-  if(NAV.mode==='time')return NAV.playing?'센서 없음 · 걷는 속도로 자동 이동':'멈춤 · 누르면 계속';
+  if(NAV.mode==='time')return '센서 없음 · 다음 단계를 눌러 주세요';
   if(!SENS.ok)return '걸음 센서 확인 중…';
   return `걸음 ${NAV.steps}${HEAD.ok?' · 방향 감지':''}`;
 }
@@ -1040,7 +1063,9 @@ function startNav(){
   if(!lastRoute)return;
   startSensors();
   NAV.plan=buildPlan(lastRoute);NAV.A=lastRoute.A;NAV.B=lastRoute.B;
-  Object.assign(NAV,{on:true,s:0,target:0,playing:true,curK:null,lastT:0,cur:-1,steps:0,arrived:false,freeUntil:0,mode:'pdr',uiKey:'',clampSteps:0,passed:new Set(),lastLeg:-1,t0:performance.now()});
+  NAV.guide=routeGuide(NAV.A,NAV.B,NAV.plan);
+  $('nv-steps').innerHTML=guideStart(NAV.A)+NAV.guide.map(guideLi).join('');
+  Object.assign(NAV,{on:true,s:0,target:0,playing:true,curK:null,lastT:0,cur:-1,ci:-1,steps:0,arrived:false,freeUntil:0,mode:'pdr',uiKey:'',clampSteps:0,passed:new Set(),lastLeg:-1,t0:performance.now()});
   HEAD.ref=HEAD.h;
   $('navui').hidden=false;document.body.style.overflow='hidden';
   $('nv-run').hidden=false;$('nv-done').hidden=true;
@@ -1057,10 +1082,7 @@ function stopNav(){
 function navTick(t){
   if(!NAV.on)return;
   const dt=NAV.lastT?Math.min(0.1,(t-NAV.lastT)/1000):0;NAV.lastT=t;
-  if(NAV.playing&&!NAV.arrived){
-    if(NAV.mode==='pdr'&&!SENS.ok&&t-NAV.t0>2500)NAV.mode='time';
-    if(NAV.mode==='time')NAV.target=Math.min(NAV.plan.total,NAV.target+dt*WALK_MPS);
-  }
+  if(NAV.playing&&!NAV.arrived&&NAV.mode==='pdr'&&!SENS.ok&&t-NAV.t0>2500)NAV.mode='time';
   NAV.s+=(NAV.target-NAV.s)*Math.min(1,dt*5);
   if(Math.abs(NAV.target-NAV.s)<0.02)NAV.s=NAV.target;
   drawNav();
@@ -1131,14 +1153,29 @@ function drawNav(){
   $('nv-time').textContent=fmtSec(rem/WALK_MPS);
   $('nv-dist').textContent=`${Math.round(rem)}m · ${String(eta.getHours()).padStart(2,'0')}:${String(eta.getMinutes()).padStart(2,'0')} 도착`;
   $('nv-prog').style.width=(P.total?s/P.total*100:100).toFixed(1)+'%';
-  const cf=$('nv-confirm'),showCf=L.type==='stair';
-  if(cf.hidden===showCf)cf.hidden=!showCf;
-  if(showCf){const t=`${L.to}층에 도착했어요`;if(cf.textContent!==t)cf.textContent=t;}
+  if(ci!==NAV.ci){NAV.ci=ci;markSteps();}
   const mt=modeText();if($('nv-mode').textContent!==mt)$('nv-mode').textContent=mt;
   if(!NAV.arrived&&s>=P.total-0.05){
     NAV.arrived=true;NAV.playing=false;buzz([80,60,80]);say('목적지에 도착했습니다. 안내를 종료합니다');
     $('nv-arrived-name').textContent=lab(NAV.B);$('nv-run').hidden=true;$('nv-done').hidden=false;
   }
+}
+/* 단계 목록: 지난 단계는 흐리게, 지금 단계는 크게 보이고 목록 위쪽으로 */
+function markSteps(){
+  const ol=$('nv-steps'),ci=NAV.ci;
+  ol.querySelector('.start').className='start done';
+  ol.querySelectorAll('[data-i]').forEach(li=>{const i=+li.dataset.i;li.className=i<ci?'done':i===ci?'cur':'';});
+  const cur=ol.querySelector('.cur');if(cur)ol.scrollTop=Math.max(0,cur.offsetTop-ol.clientHeight*0.25);
+  $('nv-nextbtn').textContent=NAV.guide[ci].btn;
+  $('nv-prev').disabled=ci===0;
+}
+/* i번째 단계가 시작하는 곳(바로 앞 단계가 끝나는 지점)으로 옮김. 마지막 다음은 도착 */
+function navGoStep(i){
+  const P=NAV.plan;i=Math.max(0,Math.min(P.items.length,i));
+  const g=i?P.items[i-1].g:0;
+  NAV.target=NAV.s=g;NAV.passed=new Set(P.items.filter(m=>m.g<=g+0.01));
+  NAV.clampSteps=0;NAV.freeUntil=0;HEAD.ref=HEAD.h;
+  if(NAV.arrived&&g<P.total-0.05){NAV.arrived=false;NAV.playing=true;$('nv-run').hidden=false;$('nv-done').hidden=true;}
 }
 /* 지도에서 내 위치를 꾹 누르면 그 자리(경로 위 가장 가까운 곳)로 옮김 */
 function placeAt(cx,cy){
@@ -1164,8 +1201,9 @@ zoomable('stage');zoomable('nv-map');
 $('mz-in').onclick=()=>zoomAt('stage',ZOOM.stage*1.4);
 $('mz-out').onclick=()=>zoomAt('stage',ZOOM.stage/1.4);
 $('nv-close').onclick=stopNav;$('nv-finish').onclick=stopNav;
-$('nv-confirm').onclick=()=>{const {L}=legAt(NAV.target);if(L.type==='stair'){NAV.target=L.start+L.len;NAV.freeUntil=0;}};
-$('nv-mode').onclick=()=>{if(NAV.mode==='time')NAV.playing=!NAV.playing;};
+$('nv-nextbtn').onclick=()=>navGoStep(NAV.ci+1);
+$('nv-prev').onclick=()=>navGoStep(NAV.ci-1);
+$('nv-steps').onclick=e=>{const li=e.target.closest('[data-i]');if(li)navGoStep(+li.dataset.i);};
 $('nv-recenter').onclick=()=>{NAV.freeUntil=0;};
 $('nv-voice').onclick=()=>{NAV.voice=!NAV.voice;$('nv-voice').setAttribute('aria-pressed',NAV.voice);try{localStorage.setItem('jm-voice',NAV.voice?'1':'0');}catch(e){}
   if(NAV.voice){NAV.cur=-1;}else{try{speechSynthesis.cancel();}catch(e){}}};
